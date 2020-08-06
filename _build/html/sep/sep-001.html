@@ -1,0 +1,414 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>SEP-001 - API for populating item fields (comparison) &#8212; aaa 1 documentation</title>
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script src="../_static/jquery.js"></script>
+    <script src="../_static/underscore.js"></script>
+    <script src="../_static/doctools.js"></script>
+    <script src="../_static/language_data.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <table class="docutils align-default">
+<colgroup>
+<col style="width: 14%" />
+<col style="width: 86%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p>SEP</p></td>
+<td><p>1</p></td>
+</tr>
+<tr class="row-even"><td><p>Title</p></td>
+<td><p>API for populating item fields (comparison)</p></td>
+</tr>
+<tr class="row-odd"><td><p>Author</p></td>
+<td><p>Ismael Carnales, Pablo Hoffman, Daniel Grana</p></td>
+</tr>
+<tr class="row-even"><td><p>Created</p></td>
+<td><p>2009-07-19</p></td>
+</tr>
+<tr class="row-odd"><td><p>Status</p></td>
+<td><p>Obsoleted by <span class="xref std std-ref">sep-008</span></p></td>
+</tr>
+</tbody>
+</table>
+<div class="section" id="sep-001-api-for-populating-item-fields-comparison">
+<h1>SEP-001 - API for populating item fields (comparison)<a class="headerlink" href="#sep-001-api-for-populating-item-fields-comparison" title="Permalink to this headline">¶</a></h1>
+<p>This page shows different usage scenarios for the two new proposed API for
+populating item field values (which will replace the old deprecated !RobustItem
+API)  and compares them. One of these will be chosen as the recommended (and
+supported) mechanism in Scrapy 0.7.</p>
+<div class="section" id="candidates-and-their-api">
+<h2>Candidates and their API<a class="headerlink" href="#candidates-and-their-api" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="robustitem-old-deprecated">
+<h3>RobustItem (old, deprecated)<a class="headerlink" href="#robustitem-old-deprecated" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">attribute(field_name,</span> <span class="pre">selector_or_value,</span> <span class="pre">**modifiers_and_adaptor_args)</span></code></p></li>
+</ul>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p><code class="docutils literal notranslate"><span class="pre">attribute()</span></code> modifiers (like <code class="docutils literal notranslate"><span class="pre">add=True</span></code>) are passed together
+with adaptor args as keyword arguments (this is ugly)</p>
+</div>
+</div>
+<div class="section" id="itemform">
+<h3>ItemForm<a class="headerlink" href="#itemform" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">__init__(response,</span> <span class="pre">item=None,</span> <span class="pre">**adaptor_args)</span></code></dt><dd><ul>
+<li><p>instantiate an <code class="docutils literal notranslate"><span class="pre">ItemForm</span></code> with a item instance with predefined adaptor arguments</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">__setitem__(field_name,</span> <span class="pre">selector_or_value)</span></code></dt><dd><ul>
+<li><p>set field value</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">__getitem__(field_name)</span></code></dt><dd><ul>
+<li><p>return the “computed” value of a field (the one that would be set to the item).
+returns <code class="docutils literal notranslate"><span class="pre">None</span></code> if not set.</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><p><code class="docutils literal notranslate"><span class="pre">get_item()</span></code>
+- return the item populated with the data provided so far</p></li>
+</ul>
+</div>
+<div class="section" id="itembuilder">
+<h3>ItemBuilder<a class="headerlink" href="#itembuilder" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">__init__(response,</span> <span class="pre">item=None,</span> <span class="pre">**adaptor_args)</span></code></dt><dd><ul>
+<li><p>instantiate an <code class="docutils literal notranslate"><span class="pre">ItemBuilder</span></code> with predefined adaptor arguments</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">add_value(field_name,</span> <span class="pre">selector_or_value,</span> <span class="pre">**adaptor_args)</span></code></dt><dd><ul>
+<li><p>add value to field</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">replace_value(field_name,</span> <span class="pre">selector_or_value,</span> <span class="pre">**adaptor_args)</span></code></dt><dd><ul>
+<li><p>replace existing field value</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">get_value(field_name)</span></code></dt><dd><ul>
+<li><p>return the “computed” value of a field (the one that would be set to the
+item). returns <code class="docutils literal notranslate"><span class="pre">None</span></code> if not set.</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">get_item()</span></code></dt><dd><ul>
+<li><p>return the item populated with the data provided so far</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+</ul>
+</div>
+</div>
+<div class="section" id="pros-and-cons-of-each-candidate">
+<h2>Pros and cons of each candidate<a class="headerlink" href="#pros-and-cons-of-each-candidate" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id1">
+<h3>ItemForm<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h3>
+<p>Pros:
+- same API used for Items (see <a class="reference external" href="https://docs.scrapy.org/en/latest/topics/items.html">https://docs.scrapy.org/en/latest/topics/items.html</a>)
+- some people consider setitem API more elegant than methods API</p>
+<p>Cons:
+- doesn’t allow passing run-time arguments to adaptors on assign, you have to</p>
+<blockquote>
+<div><p>override the adaptors for your spider if you need specific parameters, which
+can be an overhead. Example:</p>
+</div></blockquote>
+<p>Neutral:
+- solves the add=True problem using standard <code class="docutils literal notranslate"><span class="pre">__add__</span></code> and <code class="docutils literal notranslate"><span class="pre">list.append()</span></code> method</p>
+</div>
+<div class="section" id="id2">
+<h3>ItemBuilder<a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h3>
+<p>Pros:
+- allows passing run-time arguments to adaptors on assigned</p>
+<p>Cons:
+- some people consider setitem API more elegant than methods API</p>
+<p>Neutral:
+- solves the “add=True” problem by implementing different methods per action</p>
+<blockquote>
+<div><p>(replacing or adding)</p>
+</div></blockquote>
+</div>
+</div>
+<div class="section" id="usage-scenarios-for-each-candidate">
+<h2>Usage Scenarios for each candidate<a class="headerlink" href="#usage-scenarios-for-each-candidate" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="defining-adaptors">
+<h3>Defining adaptors<a class="headerlink" href="#defining-adaptors" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="id3">
+<h4>ItemForm<a class="headerlink" href="#id3" title="Permalink to this headline">¶</a></h4>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="ch">#!python</span>
+<span class="k">class</span> <span class="nc">NewsForm</span><span class="p">(</span><span class="n">ItemForm</span><span class="p">):</span>
+    <span class="n">item_class</span> <span class="o">=</span> <span class="n">NewsItem</span>
+
+    <span class="n">url</span> <span class="o">=</span> <span class="n">adaptor</span><span class="p">(</span><span class="n">extract</span><span class="p">,</span> <span class="n">remove_tags</span><span class="p">(),</span> <span class="n">unquote</span><span class="p">(),</span> <span class="n">strip</span><span class="p">)</span>
+    <span class="n">headline</span> <span class="o">=</span> <span class="n">adaptor</span><span class="p">(</span><span class="n">extract</span><span class="p">,</span> <span class="n">remove_tags</span><span class="p">(),</span> <span class="n">unquote</span><span class="p">(),</span> <span class="n">strip</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="id4">
+<h4>ItemBuilder<a class="headerlink" href="#id4" title="Permalink to this headline">¶</a></h4>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="ch">#!python</span>
+<span class="k">class</span> <span class="nc">NewsBuilder</span><span class="p">(</span><span class="n">ItemBuilder</span><span class="p">):</span>
+    <span class="n">item_class</span> <span class="o">=</span> <span class="n">NewsItem</span>
+
+    <span class="n">url</span> <span class="o">=</span> <span class="n">adaptor</span><span class="p">(</span><span class="n">extract</span><span class="p">,</span> <span class="n">remove_tags</span><span class="p">(),</span> <span class="n">unquote</span><span class="p">(),</span> <span class="n">strip</span><span class="p">)</span>
+    <span class="n">headline</span> <span class="o">=</span> <span class="n">adaptor</span><span class="p">(</span><span class="n">extract</span><span class="p">,</span> <span class="n">remove_tags</span><span class="p">(),</span> <span class="n">unquote</span><span class="p">(),</span> <span class="n">strip</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="section" id="creating-an-item">
+<h3>Creating an Item<a class="headerlink" href="#creating-an-item" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="id5">
+<h4>ItemForm<a class="headerlink" href="#id5" title="Permalink to this headline">¶</a></h4>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="ch">#!python</span>
+<span class="n">ia</span> <span class="o">=</span> <span class="n">NewsForm</span><span class="p">(</span><span class="n">response</span><span class="p">)</span>
+<span class="n">ia</span><span class="p">[</span><span class="s1">&#39;url&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">url</span>
+<span class="n">ia</span><span class="p">[</span><span class="s1">&#39;headline&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">x</span><span class="p">(</span><span class="s1">&#39;//h1[@class=&quot;headline&quot;]&#39;</span><span class="p">)</span>
+
+<span class="c1"># if we want to add another value to the same field</span>
+<span class="n">ia</span><span class="p">[</span><span class="s1">&#39;headline&#39;</span><span class="p">]</span> <span class="o">+=</span> <span class="n">x</span><span class="o">.</span><span class="n">x</span><span class="p">(</span><span class="s1">&#39;//h1[@class=&quot;headline2&quot;]&#39;</span><span class="p">)</span>
+
+<span class="c1"># if we want to replace the field value other value to the same field</span>
+<span class="n">ia</span><span class="p">[</span><span class="s1">&#39;headline&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">x</span><span class="p">(</span><span class="s1">&#39;//h1[@class=&quot;headline3&quot;]&#39;</span><span class="p">)</span>
+
+<span class="k">return</span> <span class="n">ia</span><span class="o">.</span><span class="n">get_item</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="id6">
+<h4>ItemBuilder<a class="headerlink" href="#id6" title="Permalink to this headline">¶</a></h4>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="ch">#!python</span>
+<span class="n">il</span> <span class="o">=</span> <span class="n">NewsBuilder</span><span class="p">(</span><span class="n">response</span><span class="p">)</span>
+<span class="n">il</span><span class="o">.</span><span class="n">add_value</span><span class="p">(</span><span class="s1">&#39;url&#39;</span><span class="p">,</span> <span class="n">response</span><span class="o">.</span><span class="n">url</span><span class="p">)</span>
+<span class="n">il</span><span class="o">.</span><span class="n">add_value</span><span class="p">(</span><span class="s1">&#39;headline&#39;</span><span class="p">,</span> <span class="n">x</span><span class="o">.</span><span class="n">x</span><span class="p">(</span><span class="s1">&#39;//h1[@class=&quot;headline&quot;]&#39;</span><span class="p">))</span>
+
+<span class="c1"># if we want to add another value to the same field</span>
+<span class="n">il</span><span class="o">.</span><span class="n">add_value</span><span class="p">(</span><span class="s1">&#39;headline&#39;</span><span class="p">,</span> <span class="n">x</span><span class="o">.</span><span class="n">x</span><span class="p">(</span><span class="s1">&#39;//h1[@class=&quot;headline2&quot;]&#39;</span><span class="p">))</span>
+
+<span class="c1"># if we want to replace the field value other value to the same field</span>
+<span class="n">il</span><span class="o">.</span><span class="n">replace_value</span><span class="p">(</span><span class="s1">&#39;headline&#39;</span><span class="p">,</span> <span class="n">x</span><span class="o">.</span><span class="n">x</span><span class="p">(</span><span class="s1">&#39;//h1[@class=&quot;headline3&quot;]&#39;</span><span class="p">))</span>
+
+<span class="k">return</span> <span class="n">il</span><span class="o">.</span><span class="n">get_item</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="section" id="using-different-adaptors-per-spider-site">
+<h3>Using different adaptors per Spider/Site<a class="headerlink" href="#using-different-adaptors-per-spider-site" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="id7">
+<h4>ItemForm<a class="headerlink" href="#id7" title="Permalink to this headline">¶</a></h4>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="ch">#!python</span>
+<span class="k">class</span> <span class="nc">SiteNewsFrom</span><span class="p">(</span><span class="n">NewsForm</span><span class="p">):</span>
+    <span class="n">published</span> <span class="o">=</span> <span class="n">adaptor</span><span class="p">(</span><span class="n">HtmlNewsForm</span><span class="o">.</span><span class="n">published</span><span class="p">,</span> <span class="n">to_date</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">%d</span><span class="s1">.%m.%Y&#39;</span><span class="p">))</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="id8">
+<h4>ItemBuilder<a class="headerlink" href="#id8" title="Permalink to this headline">¶</a></h4>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="ch">#!python</span>
+<span class="k">class</span> <span class="nc">SiteNewsBuilder</span><span class="p">(</span><span class="n">NewsBuilder</span><span class="p">):</span>
+    <span class="n">published</span> <span class="o">=</span> <span class="n">adaptor</span><span class="p">(</span><span class="n">HtmlNewsBuilder</span><span class="o">.</span><span class="n">published</span><span class="p">,</span> <span class="n">to_date</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">%d</span><span class="s1">.%m.%Y&#39;</span><span class="p">))</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="section" id="check-the-value-of-an-item-being-extracted">
+<h3>Check the value of an item being-extracted<a class="headerlink" href="#check-the-value-of-an-item-being-extracted" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="id9">
+<h4>ItemForm<a class="headerlink" href="#id9" title="Permalink to this headline">¶</a></h4>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="ch">#!python</span>
+<span class="n">ia</span> <span class="o">=</span> <span class="n">NewsForm</span><span class="p">(</span><span class="n">response</span><span class="p">)</span>
+<span class="n">ia</span><span class="p">[</span><span class="s1">&#39;headline&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">x</span><span class="p">(</span><span class="s1">&#39;//h1[@class=&quot;headline&quot;]&#39;</span><span class="p">)</span>
+<span class="k">if</span> <span class="ow">not</span> <span class="n">ia</span><span class="p">[</span><span class="s1">&#39;headline&#39;</span><span class="p">]:</span>
+    <span class="n">ia</span><span class="p">[</span><span class="s1">&#39;headline&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">x</span><span class="p">(</span><span class="s1">&#39;//h1[@class=&quot;title&quot;]&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="id10">
+<h4>ItemBuilder<a class="headerlink" href="#id10" title="Permalink to this headline">¶</a></h4>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="ch">#!python</span>
+<span class="n">il</span> <span class="o">=</span> <span class="n">NewsBuilder</span><span class="p">(</span><span class="n">response</span><span class="p">)</span>
+<span class="n">il</span><span class="o">.</span><span class="n">add_value</span><span class="p">(</span><span class="s1">&#39;headline&#39;</span><span class="p">,</span> <span class="n">x</span><span class="o">.</span><span class="n">x</span><span class="p">(</span><span class="s1">&#39;//h1[@class=&quot;headline&quot;]&#39;</span><span class="p">))</span>
+<span class="k">if</span> <span class="ow">not</span> <span class="n">nf</span><span class="o">.</span><span class="n">get_value</span><span class="p">(</span><span class="s1">&#39;headline&#39;</span><span class="p">):</span>
+    <span class="n">il</span><span class="o">.</span><span class="n">add_value</span><span class="p">(</span><span class="s1">&#39;headline&#39;</span><span class="p">,</span> <span class="n">x</span><span class="o">.</span><span class="n">x</span><span class="p">(</span><span class="s1">&#39;//h1[@class=&quot;title&quot;]&#39;</span><span class="p">))</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="section" id="adding-a-value-to-a-list-attribute-field">
+<h3>Adding a value to a list attribute/field<a class="headerlink" href="#adding-a-value-to-a-list-attribute-field" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="id11">
+<h4>ItemForm<a class="headerlink" href="#id11" title="Permalink to this headline">¶</a></h4>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="ch">#!python</span>
+<span class="n">ia</span><span class="p">[</span><span class="s1">&#39;headline&#39;</span><span class="p">]</span> <span class="o">+=</span> <span class="n">x</span><span class="o">.</span><span class="n">x</span><span class="p">(</span><span class="s1">&#39;//h1[@class=&quot;headline&quot;]&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="id12">
+<h4>ItemBuilder<a class="headerlink" href="#id12" title="Permalink to this headline">¶</a></h4>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="ch">#!python</span>
+<span class="n">il</span><span class="o">.</span><span class="n">add_value</span><span class="p">(</span><span class="s1">&#39;headline&#39;</span><span class="p">,</span> <span class="n">x</span><span class="o">.</span><span class="n">x</span><span class="p">(</span><span class="s1">&#39;//h1[@class=&quot;headline&quot;]&#39;</span><span class="p">))</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="section" id="passing-run-time-arguments-to-adaptors">
+<h3>Passing run-time arguments to adaptors<a class="headerlink" href="#passing-run-time-arguments-to-adaptors" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="id13">
+<h4>ItemForm<a class="headerlink" href="#id13" title="Permalink to this headline">¶</a></h4>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="ch">#!python</span>
+<span class="c1"># Only approach is passing arguments when instantiating the form</span>
+<span class="n">ia</span> <span class="o">=</span> <span class="n">NewsForm</span><span class="p">(</span><span class="n">response</span><span class="p">,</span> <span class="n">default_unit</span><span class="o">=</span><span class="s1">&#39;cm&#39;</span><span class="p">)</span>
+<span class="n">ia</span><span class="p">[</span><span class="s1">&#39;width&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">x</span><span class="p">(</span><span class="s1">&#39;//p[@class=&quot;width&quot;]&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="id14">
+<h4>ItemBuilder<a class="headerlink" href="#id14" title="Permalink to this headline">¶</a></h4>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="ch">#!python</span>
+<span class="n">il</span><span class="o">.</span><span class="n">add_value</span><span class="p">(</span><span class="s1">&#39;width&#39;</span><span class="p">,</span> <span class="n">x</span><span class="o">.</span><span class="n">x</span><span class="p">(</span><span class="s1">&#39;//p[@class=&quot;width&quot;]&#39;</span><span class="p">),</span> <span class="n">default_unit</span><span class="o">=</span><span class="s1">&#39;cm&#39;</span><span class="p">)</span>
+
+<span class="c1"># an alternative approach (more efficient)</span>
+<span class="n">il</span> <span class="o">=</span> <span class="n">NewsBuilder</span><span class="p">(</span><span class="n">response</span><span class="p">,</span> <span class="n">default_unit</span><span class="o">=</span><span class="s1">&#39;cm&#39;</span><span class="p">)</span>
+<span class="n">il</span><span class="o">.</span><span class="n">add_value</span><span class="p">(</span><span class="s1">&#39;width&#39;</span><span class="p">,</span> <span class="n">x</span><span class="o">.</span><span class="n">x</span><span class="p">(</span><span class="s1">&#39;//p[@class=&quot;width&quot;]&#39;</span><span class="p">))</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="section" id="passing-run-time-arguments-to-adaptors-same-argument-name">
+<h3>Passing run-time arguments to adaptors (same argument name)<a class="headerlink" href="#passing-run-time-arguments-to-adaptors-same-argument-name" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="id15">
+<h4>ItemForm<a class="headerlink" href="#id15" title="Permalink to this headline">¶</a></h4>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="ch">#!python</span>
+<span class="k">class</span> <span class="nc">MySiteForm</span><span class="p">(</span><span class="n">ItemForm</span><span class="p">):</span>
+    <span class="n">width</span> <span class="o">=</span> <span class="n">adaptor</span><span class="p">(</span><span class="n">ItemForm</span><span class="o">.</span><span class="n">width</span><span class="p">,</span> <span class="n">default_unit</span><span class="o">=</span><span class="s1">&#39;cm&#39;</span><span class="p">)</span>
+    <span class="n">volume</span> <span class="o">=</span> <span class="n">adaptor</span><span class="p">(</span><span class="n">ItemForm</span><span class="o">.</span><span class="n">width</span><span class="p">,</span> <span class="n">default_unit</span><span class="o">=</span><span class="s1">&#39;lt&#39;</span><span class="p">)</span>
+
+<span class="n">ia</span><span class="p">[</span><span class="s1">&#39;width&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">x</span><span class="p">(</span><span class="s1">&#39;//p[@class=&quot;width&quot;]&#39;</span><span class="p">)</span>
+<span class="n">ia</span><span class="p">[</span><span class="s1">&#39;volume&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">x</span><span class="p">(</span><span class="s1">&#39;//p[@class=&quot;volume&quot;]&#39;</span><span class="p">)</span>
+
+<span class="c1"># another example passing parametes on instance</span>
+<span class="n">ia</span> <span class="o">=</span> <span class="n">NewsForm</span><span class="p">(</span><span class="n">response</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s1">&#39;utf-8&#39;</span><span class="p">)</span>
+<span class="n">ia</span><span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">x</span><span class="p">(</span><span class="s1">&#39;//p[@class=&quot;name&quot;]&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="id16">
+<h4>ItemBuilder<a class="headerlink" href="#id16" title="Permalink to this headline">¶</a></h4>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="ch">#!python</span>
+<span class="n">il</span><span class="o">.</span><span class="n">add_value</span><span class="p">(</span><span class="s1">&#39;width&#39;</span><span class="p">,</span> <span class="n">x</span><span class="o">.</span><span class="n">x</span><span class="p">(</span><span class="s1">&#39;//p[@class=&quot;width&quot;]&#39;</span><span class="p">),</span> <span class="n">default_unit</span><span class="o">=</span><span class="s1">&#39;cm&#39;</span><span class="p">)</span>
+<span class="n">il</span><span class="o">.</span><span class="n">add_value</span><span class="p">(</span><span class="s1">&#39;volume&#39;</span><span class="p">,</span> <span class="n">x</span><span class="o">.</span><span class="n">x</span><span class="p">(</span><span class="s1">&#39;//p[@class=&quot;volume&quot;]&#39;</span><span class="p">),</span> <span class="n">default_unit</span><span class="o">=</span><span class="s1">&#39;lt&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">aaa</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2020, lancer.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.4.0</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="../_sources/sep/sep-001.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

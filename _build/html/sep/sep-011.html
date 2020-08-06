@@ -1,0 +1,144 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>SEP-011: Process models for Scrapy &#8212; aaa 1 documentation</title>
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script src="../_static/jquery.js"></script>
+    <script src="../_static/underscore.js"></script>
+    <script src="../_static/doctools.js"></script>
+    <script src="../_static/language_data.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <table class="docutils align-default">
+<colgroup>
+<col style="width: 18%" />
+<col style="width: 82%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p>SEP</p></td>
+<td><p>11</p></td>
+</tr>
+<tr class="row-even"><td><p>Title</p></td>
+<td><p>Process models for Scrapy</p></td>
+</tr>
+<tr class="row-odd"><td><p>Created</p></td>
+<td><p>2009-11-16</p></td>
+</tr>
+<tr class="row-even"><td><p>Status</p></td>
+<td><p>Partially implemented - see #168</p></td>
+</tr>
+</tbody>
+</table>
+<div class="section" id="sep-011-process-models-for-scrapy">
+<h1>SEP-011: Process models for Scrapy<a class="headerlink" href="#sep-011-process-models-for-scrapy" title="Permalink to this headline">¶</a></h1>
+<p>There is an interest of supporting different process models for Scrapy, mainly
+to help prevent memory leaks which affect running all spiders in the same
+process.</p>
+<p>By running each spider on a separate process (or pool of processes) we’ll be
+able to “recycle” process when they exceed a maximum amount of memory.</p>
+<div class="section" id="supported-process-models">
+<h2>Supported process models<a class="headerlink" href="#supported-process-models" title="Permalink to this headline">¶</a></h2>
+<p>The user could choose between different process models:</p>
+<ol class="arabic simple">
+<li><p>in process (only method supported so far)</p></li>
+<li><p>pooled processes (a predefined pool of N processes, which could run more than one spider each)</p></li>
+<li><p>separate processes (one process per spider)</p></li>
+</ol>
+<p>Using different processes would increase reliability at the cost of performance.</p>
+</div>
+<div class="section" id="another-ideas-to-consider">
+<h2>Another ideas to consider<a class="headerlink" href="#another-ideas-to-consider" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li><p>configuring pipeline process models - so that we can have a process exclusive
+for running pipelines</p></li>
+<li><p>support writing spidersr in different languages when we don’t use an in
+process model</p></li>
+</ul>
+</div>
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">aaa</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2020, lancer.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.4.0</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="../_sources/sep/sep-011.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

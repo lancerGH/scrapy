@@ -1,0 +1,234 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>SEP-005: Detailed ItemBuilder API use &#8212; aaa 1 documentation</title>
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script src="../_static/jquery.js"></script>
+    <script src="../_static/underscore.js"></script>
+    <script src="../_static/doctools.js"></script>
+    <script src="../_static/language_data.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <table class="docutils align-default">
+<colgroup>
+<col style="width: 19%" />
+<col style="width: 81%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p>SEP</p></td>
+<td><p>5</p></td>
+</tr>
+<tr class="row-even"><td><p>Title</p></td>
+<td><p>ItemBuilder API</p></td>
+</tr>
+<tr class="row-odd"><td><p>Author</p></td>
+<td><p>Ismael Carnales, Pablo Hoffman</p></td>
+</tr>
+<tr class="row-even"><td><p>Created</p></td>
+<td><p>2009-07-24</p></td>
+</tr>
+<tr class="row-odd"><td><p>Status</p></td>
+<td><p>Obsoleted by <a class="reference internal" href="sep-008.html"><span class="doc">SEP-008 - Item Loaders</span></a></p></td>
+</tr>
+</tbody>
+</table>
+<div class="section" id="sep-005-detailed-itembuilder-api-use">
+<h1>SEP-005: Detailed <code class="docutils literal notranslate"><span class="pre">ItemBuilder</span></code> API use<a class="headerlink" href="#sep-005-detailed-itembuilder-api-use" title="Permalink to this headline">¶</a></h1>
+<p>Item class for examples:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="ch">#!python</span>
+<span class="k">class</span> <span class="nc">NewsItem</span><span class="p">(</span><span class="n">Item</span><span class="p">):</span>
+    <span class="n">url</span> <span class="o">=</span> <span class="n">fields</span><span class="o">.</span><span class="n">TextField</span><span class="p">()</span>
+    <span class="n">headline</span> <span class="o">=</span> <span class="n">fields</span><span class="o">.</span><span class="n">TextField</span><span class="p">()</span>
+    <span class="n">content</span> <span class="o">=</span> <span class="n">fields</span><span class="o">.</span><span class="n">TextField</span><span class="p">()</span>
+    <span class="n">published</span> <span class="o">=</span> <span class="n">fields</span><span class="o">.</span><span class="n">DateField</span><span class="p">()</span>
+</pre></div>
+</div>
+<div class="section" id="gsetting-expanders">
+<h2>gSetting expanders<a class="headerlink" href="#gsetting-expanders" title="Permalink to this headline">¶</a></h2>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="ch">#!python</span>
+<span class="k">class</span> <span class="nc">NewsItemBuilder</span><span class="p">(</span><span class="n">ItemBuilder</span><span class="p">):</span>
+    <span class="n">item_class</span> <span class="o">=</span> <span class="n">NewsItem</span>
+
+    <span class="n">headline</span> <span class="o">=</span> <span class="n">reducers</span><span class="o">.</span><span class="n">Reducer</span><span class="p">(</span><span class="n">extract</span><span class="p">,</span> <span class="n">remove_tags</span><span class="p">(),</span> <span class="n">unquote</span><span class="p">(),</span> <span class="n">strip</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>This approach will override the Reducer class for <code class="docutils literal notranslate"><span class="pre">BuilderFields</span></code> depending
+on their Item Field class:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">MultivaluedField</span></code> = <code class="docutils literal notranslate"><span class="pre">PassValue</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">TextField</span></code> = <code class="docutils literal notranslate"><span class="pre">JoinStrings</span></code></p></li>
+<li><p>other = <code class="docutils literal notranslate"><span class="pre">TakeFirst</span></code></p></li>
+</ul>
+</div></blockquote>
+</div>
+<div class="section" id="gsetting-reducers">
+<h2>gSetting reducers<a class="headerlink" href="#gsetting-reducers" title="Permalink to this headline">¶</a></h2>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="ch">#!python</span>
+<span class="k">class</span> <span class="nc">NewsItemBuilder</span><span class="p">(</span><span class="n">ItemBuilder</span><span class="p">):</span>
+    <span class="n">item_class</span> <span class="o">=</span> <span class="n">NewsItem</span>
+
+    <span class="n">headline</span> <span class="o">=</span> <span class="n">reducers</span><span class="o">.</span><span class="n">TakeFirst</span><span class="p">(</span><span class="n">extract</span><span class="p">,</span> <span class="n">remove_tags</span><span class="p">(),</span> <span class="n">unquote</span><span class="p">(),</span> <span class="n">strip</span><span class="p">)</span>
+    <span class="n">published</span> <span class="o">=</span> <span class="n">reducers</span><span class="o">.</span><span class="n">Reducer</span><span class="p">(</span><span class="n">extract</span><span class="p">,</span> <span class="n">remove_tags</span><span class="p">(),</span> <span class="n">unquote</span><span class="p">(),</span> <span class="n">strip</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>As with the previous example this would select join_strings as the reducer for
+content</p>
+</div>
+<div class="section" id="gsetting-expanders-reducers-new-way">
+<h2>gSetting expanders/reducers new way<a class="headerlink" href="#gsetting-expanders-reducers-new-way" title="Permalink to this headline">¶</a></h2>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="ch">#!python</span>
+<span class="k">class</span> <span class="nc">NewsItemBuilder</span><span class="p">(</span><span class="n">ItemBuilder</span><span class="p">):</span>
+    <span class="n">item_class</span> <span class="o">=</span> <span class="n">NewsItem</span>
+
+    <span class="n">headline</span> <span class="o">=</span> <span class="n">BuilderField</span><span class="p">(</span><span class="n">extract</span><span class="p">,</span> <span class="n">remove_tags</span><span class="p">(),</span> <span class="n">unquote</span><span class="p">(),</span> <span class="n">strip</span><span class="p">)</span>
+    <span class="n">content</span> <span class="o">=</span> <span class="n">BuilderField</span><span class="p">(</span><span class="n">extract</span><span class="p">,</span> <span class="n">remove_tags</span><span class="p">(),</span> <span class="n">unquote</span><span class="p">(),</span> <span class="n">strip</span><span class="p">)</span>
+
+    <span class="k">class</span> <span class="nc">Reducer</span><span class="p">:</span>
+        <span class="n">headline</span> <span class="o">=</span> <span class="n">TakeFirst</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="gextending-itembuilder">
+<h2>gExtending <code class="docutils literal notranslate"><span class="pre">ItemBuilder</span></code><a class="headerlink" href="#gextending-itembuilder" title="Permalink to this headline">¶</a></h2>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="ch">#!python</span>
+<span class="k">class</span> <span class="nc">SiteNewsItemBuilder</span><span class="p">(</span><span class="n">NewsItemBuilder</span><span class="p">):</span>
+    <span class="n">published</span> <span class="o">=</span> <span class="n">reducers</span><span class="o">.</span><span class="n">Reducer</span><span class="p">(</span><span class="n">extract</span><span class="p">,</span> <span class="n">remove_tags</span><span class="p">(),</span> <span class="n">unquote</span><span class="p">(),</span>
+                                 <span class="n">strip</span><span class="p">,</span> <span class="n">to_date</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">%d</span><span class="s1">.%m.%Y&#39;</span><span class="p">))</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="gextending-itembuilder-using-statich-methods">
+<h2>gExtending <code class="docutils literal notranslate"><span class="pre">ItemBuilder</span></code> using statich methods<a class="headerlink" href="#gextending-itembuilder-using-statich-methods" title="Permalink to this headline">¶</a></h2>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="ch">#!python</span>
+<span class="k">class</span> <span class="nc">SiteNewsItemBuilder</span><span class="p">(</span><span class="n">NewsItemBuilder</span><span class="p">):</span>
+    <span class="n">published</span> <span class="o">=</span> <span class="n">reducers</span><span class="o">.</span><span class="n">Reducer</span><span class="p">(</span><span class="n">NewsItemBuilder</span><span class="o">.</span><span class="n">published</span><span class="p">,</span> <span class="n">to_date</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">%d</span><span class="s1">.%m.%Y&#39;</span><span class="p">))</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="gusing-default-builder">
+<h2>gUsing default_builder<a class="headerlink" href="#gusing-default-builder" title="Permalink to this headline">¶</a></h2>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="ch">#!python</span>
+<span class="k">class</span> <span class="nc">DefaultedNewsItemBuilder</span><span class="p">(</span><span class="n">ItemBuilder</span><span class="p">):</span>
+    <span class="n">item_class</span> <span class="o">=</span> <span class="n">NewsItem</span>
+
+    <span class="n">default_builder</span> <span class="o">=</span> <span class="n">reducers</span><span class="o">.</span><span class="n">Reducer</span><span class="p">(</span><span class="n">extract</span><span class="p">,</span> <span class="n">remove_tags</span><span class="p">(),</span> <span class="n">unquote</span><span class="p">(),</span> <span class="n">strip</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>This will use default_builder as the builder for every field in the item class.
+As a reducer is not set reducers will be set based on Item Field classess.</p>
+</div>
+<div class="section" id="greset-default-builder-for-a-field">
+<h2>gReset default_builder for a field<a class="headerlink" href="#greset-default-builder-for-a-field" title="Permalink to this headline">¶</a></h2>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="ch">#!python</span>
+<span class="k">class</span> <span class="nc">DefaultedNewsItemBuilder</span><span class="p">(</span><span class="n">ItemBuilder</span><span class="p">):</span>
+    <span class="n">item_class</span> <span class="o">=</span> <span class="n">NewsItem</span>
+
+    <span class="n">default_builder</span> <span class="o">=</span> <span class="n">reducers</span><span class="o">.</span><span class="n">Reducer</span><span class="p">(</span><span class="n">extract</span><span class="p">,</span> <span class="n">remove_tags</span><span class="p">(),</span> <span class="n">unquote</span><span class="p">(),</span> <span class="n">strip</span><span class="p">)</span>
+    <span class="n">url</span> <span class="o">=</span> <span class="n">BuilderField</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="gextending-default-itembuilder">
+<h2>gExtending default <code class="docutils literal notranslate"><span class="pre">ItemBuilder</span></code><a class="headerlink" href="#gextending-default-itembuilder" title="Permalink to this headline">¶</a></h2>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="ch">#!python</span>
+<span class="k">class</span> <span class="nc">SiteNewsItemBuilder</span><span class="p">(</span><span class="n">NewsItemBuilder</span><span class="p">):</span>
+    <span class="n">published</span> <span class="o">=</span> <span class="n">reducers</span><span class="o">.</span><span class="n">Reducer</span><span class="p">(</span><span class="n">extract</span><span class="p">,</span> <span class="n">remove_tags</span><span class="p">(),</span> <span class="n">unquote</span><span class="p">(),</span> <span class="n">strip</span><span class="p">,</span> <span class="n">to_date</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">%d</span><span class="s1">.%m.%Y&#39;</span><span class="p">))</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="gextending-default-itembuilder-using-static-methods">
+<h2>gExtending default <code class="docutils literal notranslate"><span class="pre">ItemBuilder</span></code> using static methods<a class="headerlink" href="#gextending-default-itembuilder-using-static-methods" title="Permalink to this headline">¶</a></h2>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="ch">#!python</span>
+<span class="k">class</span> <span class="nc">SiteNewsItemBuilder</span><span class="p">(</span><span class="n">NewsItemBuilder</span><span class="p">):</span>
+    <span class="n">published</span> <span class="o">=</span> <span class="n">reducers</span><span class="o">.</span><span class="n">Reducer</span><span class="p">(</span><span class="n">NewsItemBuilder</span><span class="o">.</span><span class="n">default_builder</span><span class="p">,</span> <span class="n">to_date</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">%d</span><span class="s1">.%m.%Y&#39;</span><span class="p">))</span>
+</pre></div>
+</div>
+</div>
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">aaa</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2020, lancer.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.4.0</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="../_sources/sep/sep-005.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

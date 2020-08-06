@@ -1,0 +1,292 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>SEP-009 - Singletons removal &#8212; aaa 1 documentation</title>
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script src="../_static/jquery.js"></script>
+    <script src="../_static/underscore.js"></script>
+    <script src="../_static/doctools.js"></script>
+    <script src="../_static/language_data.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <table class="docutils align-default">
+<colgroup>
+<col style="width: 16%" />
+<col style="width: 84%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p>SEP</p></td>
+<td><p>9</p></td>
+</tr>
+<tr class="row-even"><td><p>Title</p></td>
+<td><p>Singleton removal</p></td>
+</tr>
+<tr class="row-odd"><td><p>Author</p></td>
+<td><p>Pablo Hoffman</p></td>
+</tr>
+<tr class="row-even"><td><p>Created</p></td>
+<td><p>2009-11-14</p></td>
+</tr>
+<tr class="row-odd"><td><p>Status</p></td>
+<td><p>Document in progress (being written)</p></td>
+</tr>
+</tbody>
+</table>
+<div class="section" id="sep-009-singletons-removal">
+<h1>SEP-009 - Singletons removal<a class="headerlink" href="#sep-009-singletons-removal" title="Permalink to this headline">¶</a></h1>
+<p>This SEP proposes a refactoring of the Scrapy to get ri of singletons, which
+will result in a cleaner API and will allow us to implement the library API
+proposed in <a class="reference internal" href="sep-004.html"><span class="doc">SEP-004: Library API</span></a>.</p>
+<div class="section" id="current-singletons">
+<h2>Current singletons<a class="headerlink" href="#current-singletons" title="Permalink to this headline">¶</a></h2>
+<p>Scrapy 0.7 has the following singletons:</p>
+<ul class="simple">
+<li><p>Execution engine (<code class="docutils literal notranslate"><span class="pre">scrapy.core.engine.scrapyengine</span></code>)</p></li>
+<li><p>Execution manager (<code class="docutils literal notranslate"><span class="pre">scrapy.core.manager.scrapymanager</span></code>)</p></li>
+<li><p>Extension manager (<code class="docutils literal notranslate"><span class="pre">scrapy.extension.extensions</span></code>)</p></li>
+<li><p>Spider manager (<code class="docutils literal notranslate"><span class="pre">scrapy.spider.spiders</span></code>)</p></li>
+<li><p>Stats collector (<code class="docutils literal notranslate"><span class="pre">scrapy.stats.stats</span></code>)</p></li>
+<li><p>Logging system (<code class="docutils literal notranslate"><span class="pre">scrapy.log</span></code>)</p></li>
+<li><p>Signals system (<code class="docutils literal notranslate"><span class="pre">scrapy.xlib.pydispatcher</span></code>)</p></li>
+</ul>
+</div>
+<div class="section" id="proposed-api">
+<h2>Proposed API<a class="headerlink" href="#proposed-api" title="Permalink to this headline">¶</a></h2>
+<p>The proposed architecture is to have one “root” object called <code class="docutils literal notranslate"><span class="pre">Crawler</span></code>
+(which will replace the current Execution Manager) and make all current
+singletons members of that object, as explained below:</p>
+<ul>
+<li><p><strong>crawler</strong>: <code class="docutils literal notranslate"><span class="pre">scrapy.crawler.Crawler</span></code> instance (replaces current
+<code class="docutils literal notranslate"><span class="pre">scrapy.core.manager.ExecutionManager</span></code>) - instantiated with a <code class="docutils literal notranslate"><span class="pre">Settings</span></code>
+object</p>
+<blockquote>
+<div><ul>
+<li><p><strong>crawler.settings</strong>: <code class="docutils literal notranslate"><span class="pre">scrapy.conf.Settings</span></code> instance (passed in the <code class="docutils literal notranslate"><span class="pre">__init__</span></code> method)</p></li>
+<li><p><strong>crawler.extensions</strong>: <code class="docutils literal notranslate"><span class="pre">scrapy.extension.ExtensionManager</span></code> instance</p></li>
+<li><dl class="simple">
+<dt><strong>crawler.engine</strong>: <code class="docutils literal notranslate"><span class="pre">scrapy.core.engine.ExecutionEngine</span></code> instance</dt><dd><ul class="simple">
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">crawler.engine.scheduler</span></code></dt><dd><ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">crawler.engine.scheduler.middleware</span></code> - to access scheduler
+middleware</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">crawler.engine.downloader</span></code></dt><dd><ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">crawler.engine.downloader.middleware</span></code> - to access downloader
+middleware</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">crawler.engine.scraper</span></code></dt><dd><ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">crawler.engine.scraper.spidermw</span></code> - to access spider middleware</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><p><strong>crawler.spiders</strong>: <code class="docutils literal notranslate"><span class="pre">SpiderManager</span></code> instance (concrete class given in
+<code class="docutils literal notranslate"><span class="pre">SPIDER_MANAGER_CLASS</span></code> setting)</p></li>
+<li><p><strong>crawler.stats</strong>: <code class="docutils literal notranslate"><span class="pre">StatsCollector</span></code> instance (concrete class given in
+<code class="docutils literal notranslate"><span class="pre">STATS_CLASS</span></code> setting)</p></li>
+<li><p><strong>crawler.log</strong>: Logger class with methods replacing the current
+<code class="docutils literal notranslate"><span class="pre">scrapy.log</span></code> functions. Logging would be started (if enabled) on
+<code class="docutils literal notranslate"><span class="pre">Crawler</span></code> instantiation, so no log starting functions are required.</p>
+<blockquote>
+<div><ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">crawler.log.msg</span></code></p></li>
+</ul>
+</div></blockquote>
+</li>
+<li><dl class="simple">
+<dt><strong>crawler.signals</strong>: signal handling</dt><dd><ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">crawler.signals.send()</span></code> - same as <code class="docutils literal notranslate"><span class="pre">pydispatch.dispatcher.send()</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">crawler.signals.connect()</span></code> - same as
+<code class="docutils literal notranslate"><span class="pre">pydispatch.dispatcher.connect()</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">crawler.signals.disconnect()</span></code> - same as
+<code class="docutils literal notranslate"><span class="pre">pydispatch.dispatcher.disconnect()</span></code></p></li>
+</ul>
+</dd>
+</dl>
+</li>
+</ul>
+</div></blockquote>
+</li>
+</ul>
+</div>
+<div class="section" id="required-code-changes-after-singletons-removal">
+<h2>Required code changes after singletons removal<a class="headerlink" href="#required-code-changes-after-singletons-removal" title="Permalink to this headline">¶</a></h2>
+<p>All components (extensions, middlewares, etc) will receive this <code class="docutils literal notranslate"><span class="pre">Crawler</span></code>
+object in their <code class="docutils literal notranslate"><span class="pre">__init__</span></code> methods, and this will be the only mechanism for accessing
+any other components (as opposed to importing each singleton from their
+respective module). This will also serve to stabilize the core API, something
+which we haven’t documented so far (partly because of this).</p>
+<p>So, for a typical middleware <code class="docutils literal notranslate"><span class="pre">__init__</span></code> method code, instead of this:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="ch">#!python</span>
+<span class="kn">from</span> <span class="nn">scrapy.core.exceptions</span> <span class="kn">import</span> <span class="n">NotConfigured</span>
+<span class="kn">from</span> <span class="nn">scrapy.conf</span> <span class="kn">import</span> <span class="n">settings</span>
+
+<span class="k">class</span> <span class="nc">SomeMiddleware</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+   <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+      <span class="k">if</span> <span class="ow">not</span> <span class="n">settings</span><span class="o">.</span><span class="n">getbool</span><span class="p">(</span><span class="s1">&#39;SOMEMIDDLEWARE_ENABLED&#39;</span><span class="p">):</span>
+          <span class="k">raise</span> <span class="n">NotConfigured</span>
+</pre></div>
+</div>
+<p>We’d write this:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="ch">#!python</span>
+<span class="kn">from</span> <span class="nn">scrapy.core.exceptions</span> <span class="kn">import</span> <span class="n">NotConfigured</span>
+
+<span class="k">class</span> <span class="nc">SomeMiddleware</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+   <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">crawler</span><span class="p">):</span>
+      <span class="k">if</span> <span class="ow">not</span> <span class="n">crawler</span><span class="o">.</span><span class="n">settings</span><span class="o">.</span><span class="n">getbool</span><span class="p">(</span><span class="s1">&#39;SOMEMIDDLEWARE_ENABLED&#39;</span><span class="p">):</span>
+          <span class="k">raise</span> <span class="n">NotConfigured</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="running-from-command-line">
+<h2>Running from command line<a class="headerlink" href="#running-from-command-line" title="Permalink to this headline">¶</a></h2>
+<p>When running from <strong>command line</strong> (the only mechanism supported so far) the
+<code class="docutils literal notranslate"><span class="pre">scrapy.command.cmdline</span></code> module will:</p>
+<ol class="arabic simple">
+<li><p>instantiate a <code class="docutils literal notranslate"><span class="pre">Settings</span></code> object and populate it with the values in
+SCRAPY_SETTINGS_MODULE, and per-command overrides</p></li>
+<li><p>instantiate a <code class="docutils literal notranslate"><span class="pre">Crawler</span></code> object with the <code class="docutils literal notranslate"><span class="pre">Settings</span></code> object (the
+<code class="docutils literal notranslate"><span class="pre">Crawler</span></code> instantiates all its components based on the given settings)</p></li>
+<li><p>run <code class="docutils literal notranslate"><span class="pre">Crawler.crawl()</span></code> with the URLs or domains passed in the command line</p></li>
+</ol>
+</div>
+<div class="section" id="using-scrapy-as-a-library">
+<h2>Using Scrapy as a library<a class="headerlink" href="#using-scrapy-as-a-library" title="Permalink to this headline">¶</a></h2>
+<p>When using Scrapy with the <strong>library API</strong>, the programmer will:</p>
+<ol class="arabic simple">
+<li><p>instantiate a <code class="docutils literal notranslate"><span class="pre">Settings</span></code> object (which only has the defaults settings, by
+default) and override the desired settings</p></li>
+<li><p>instantiate a <code class="docutils literal notranslate"><span class="pre">Crawler</span></code> object with the <code class="docutils literal notranslate"><span class="pre">Settings</span></code> object</p></li>
+</ol>
+</div>
+<div class="section" id="open-issues-to-resolve">
+<h2>Open issues to resolve<a class="headerlink" href="#open-issues-to-resolve" title="Permalink to this headline">¶</a></h2>
+<ul>
+<li><p>Should we pass <code class="docutils literal notranslate"><span class="pre">Settings</span></code> object to <code class="docutils literal notranslate"><span class="pre">ScrapyCommand.add_options()</span></code>?</p></li>
+<li><dl>
+<dt>How should spiders access settings?</dt><dd><ul>
+<li><dl class="simple">
+<dt>Option 1. Pass <code class="docutils literal notranslate"><span class="pre">Crawler</span></code> object to spider <code class="docutils literal notranslate"><span class="pre">__init__</span></code> methods too</dt><dd><ul class="simple">
+<li><p>pro: one way to access all components (settings and signals being the
+most relevant to spiders)</p></li>
+<li><p>con?: spider code can access (and control) any crawler component -
+since we don’t want to support spiders messing with the crawler (write
+an extension or spider middleware if you need that)</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><p>Option 2. Pass <code class="docutils literal notranslate"><span class="pre">Settings</span></code> object to spider <code class="docutils literal notranslate"><span class="pre">__init__</span></code> methods, which would
+then be accessed through <code class="docutils literal notranslate"><span class="pre">self.settings</span></code>, like logging which is accessed
+through <code class="docutils literal notranslate"><span class="pre">self.log</span></code></p>
+<blockquote>
+<div><ul class="simple">
+<li><p>con: would need a way to access stats too</p></li>
+</ul>
+</div></blockquote>
+</li>
+</ul>
+</dd>
+</dl>
+</li>
+</ul>
+</div>
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">aaa</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2020, lancer.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.4.0</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="../_sources/sep/sep-009.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

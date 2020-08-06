@@ -1,0 +1,199 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>SEP-015: ScrapyManager and SpiderManager API refactoring &#8212; aaa 1 documentation</title>
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script src="../_static/jquery.js"></script>
+    <script src="../_static/underscore.js"></script>
+    <script src="../_static/doctools.js"></script>
+    <script src="../_static/language_data.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <table class="docutils align-default">
+<colgroup>
+<col style="width: 13%" />
+<col style="width: 87%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p>SEP</p></td>
+<td><p>15</p></td>
+</tr>
+<tr class="row-even"><td><p>Title</p></td>
+<td><p>ScrapyManager and SpiderManager API refactoring</p></td>
+</tr>
+<tr class="row-odd"><td><p>Author</p></td>
+<td><p>Insophia Team</p></td>
+</tr>
+<tr class="row-even"><td><p>Created</p></td>
+<td><p>2010-03-10</p></td>
+</tr>
+<tr class="row-odd"><td><p>Status</p></td>
+<td><p>Final</p></td>
+</tr>
+</tbody>
+</table>
+<div class="section" id="sep-015-scrapymanager-and-spidermanager-api-refactoring">
+<h1>SEP-015: ScrapyManager and SpiderManager API refactoring<a class="headerlink" href="#sep-015-scrapymanager-and-spidermanager-api-refactoring" title="Permalink to this headline">¶</a></h1>
+<p>This SEP proposes a refactoring of <code class="docutils literal notranslate"><span class="pre">ScrapyManager</span></code> and <code class="docutils literal notranslate"><span class="pre">SpiderManager</span></code>
+APIs.</p>
+<div class="section" id="spidermanager">
+<h2>SpiderManager<a class="headerlink" href="#spidermanager" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">get(spider_name)</span></code> -&gt; <code class="docutils literal notranslate"><span class="pre">Spider</span></code> instance</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">find_by_request(request)</span></code> -&gt; list of spider names</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">list()</span></code> -&gt; list of spider names</p></li>
+<li><p>remove <code class="docutils literal notranslate"><span class="pre">fromdomain()</span></code>, <code class="docutils literal notranslate"><span class="pre">fromurl()</span></code></p></li>
+</ul>
+</div>
+<div class="section" id="scrapymanager">
+<h2>ScrapyManager<a class="headerlink" href="#scrapymanager" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">crawl_request(request,</span> <span class="pre">spider=None)</span></code></dt><dd><ul>
+<li><p>calls <code class="docutils literal notranslate"><span class="pre">SpiderManager.find_by_request(request)</span></code> if spider is <code class="docutils literal notranslate"><span class="pre">None</span></code></p></li>
+<li><p>fails if <code class="docutils literal notranslate"><span class="pre">len(spiders</span> <span class="pre">returned)</span></code> != 1</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">crawl_spider(spider)</span></code></dt><dd><ul>
+<li><p>calls <code class="docutils literal notranslate"><span class="pre">spider.start_requests()</span></code></p></li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">crawl_spider_name(spider_name)</span></code></dt><dd><ul>
+<li><p>calls <code class="docutils literal notranslate"><span class="pre">SpiderManager.get(spider_name)</span></code></p></li>
+<li><p>calls <code class="docutils literal notranslate"><span class="pre">spider.start_requests()</span></code></p></li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">crawl_url(url)</span></code></dt><dd><ul>
+<li><p>calls <code class="docutils literal notranslate"><span class="pre">spider.make_requests_from_url()</span></code></p></li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><p>remove <code class="docutils literal notranslate"><span class="pre">crawl()</span></code>, <code class="docutils literal notranslate"><span class="pre">runonce()</span></code></p></li>
+</ul>
+<p>Instead of using <code class="docutils literal notranslate"><span class="pre">runonce()</span></code>, commands (such as crawl/parse) would call
+<code class="docutils literal notranslate"><span class="pre">crawl_*</span></code> and then <code class="docutils literal notranslate"><span class="pre">start()</span></code>.</p>
+</div>
+<div class="section" id="changes-to-commands">
+<h2>Changes to Commands<a class="headerlink" href="#changes-to-commands" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">if</span> <span class="pre">is_url(arg):</span></code></dt><dd><ul>
+<li><p>calls <code class="docutils literal notranslate"><span class="pre">ScrapyManager.crawl_url(arg)</span></code></p></li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">else:</span></code></dt><dd><ul>
+<li><p>calls <code class="docutils literal notranslate"><span class="pre">ScrapyManager.crawl_spider_name(arg)</span></code></p></li>
+</ul>
+</dd>
+</dl>
+</li>
+</ul>
+</div>
+<div class="section" id="pending-issues">
+<h2>Pending issues<a class="headerlink" href="#pending-issues" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li><p>should we rename <code class="docutils literal notranslate"><span class="pre">ScrapyManager.crawl_*</span></code> to <code class="docutils literal notranslate"><span class="pre">schedule_*</span></code> or <code class="docutils literal notranslate"><span class="pre">add_*</span></code> ?</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">SpiderManager.find_by_request</span></code> or
+<code class="docutils literal notranslate"><span class="pre">SpiderManager.search(request=request)</span></code> ?</p></li>
+</ul>
+</div>
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">aaa</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2020, lancer.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.4.0</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="../_sources/sep/sep-015.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

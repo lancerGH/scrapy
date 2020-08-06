@@ -1,0 +1,220 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>SEP-008 - Item Loaders &#8212; aaa 1 documentation</title>
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script src="../_static/jquery.js"></script>
+    <script src="../_static/underscore.js"></script>
+    <script src="../_static/doctools.js"></script>
+    <script src="../_static/language_data.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <table class="docutils align-default">
+<colgroup>
+<col style="width: 13%" />
+<col style="width: 87%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p>SEP</p></td>
+<td><p>8</p></td>
+</tr>
+<tr class="row-even"><td><p>Title</p></td>
+<td><p>Item Parsers</p></td>
+</tr>
+<tr class="row-odd"><td><p>Author</p></td>
+<td><p>Pablo Hoffman</p></td>
+</tr>
+<tr class="row-even"><td><p>Created</p></td>
+<td><p>2009-08-11</p></td>
+</tr>
+<tr class="row-odd"><td><p>Status</p></td>
+<td><p>Final (implemented with variations)</p></td>
+</tr>
+<tr class="row-even"><td><p>Obsoletes</p></td>
+<td><p><a class="reference internal" href="sep-001.html"><span class="doc">SEP-001 - API for populating item fields (comparison)</span></a>, <a class="reference internal" href="sep-002.html"><span class="doc">SEP-002 - List fields API</span></a>, <a class="reference internal" href="sep-003.html"><span class="doc">SEP-003 - Nested items API (ItemField)</span></a>, <a class="reference internal" href="sep-005.html"><span class="doc">SEP-005: Detailed ItemBuilder API use</span></a></p></td>
+</tr>
+</tbody>
+</table>
+<div class="section" id="sep-008-item-loaders">
+<h1>SEP-008 - Item Loaders<a class="headerlink" href="#sep-008-item-loaders" title="Permalink to this headline">¶</a></h1>
+<p>Item Parser is the final API proposed to implement Item Builders/Loader
+proposed in <a class="reference internal" href="sep-001.html"><span class="doc">SEP-001 - API for populating item fields (comparison)</span></a>.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>This is the API that was finally implemented with the name “Item
+Loaders”, instead of “Item Parsers” along with some other minor fine
+tuning to the API methods and semantics.</p>
+</div>
+<div class="section" id="dataflow">
+<h2>Dataflow<a class="headerlink" href="#dataflow" title="Permalink to this headline">¶</a></h2>
+<ol class="arabic simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">ItemParser.add_value()</span></code>
+1. <strong>input_parser</strong>
+2. store</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">ItemParser.add_xpath()</span></code> <em>(only available in XPathItemLoader)</em>
+1. selector.extract()
+2. <strong>input_parser</strong>
+3. store</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">ItemParser.populate_item()</span></code> <em>(ex. get_item)</em>
+1. <strong>output_parser</strong>
+2. assign field</p></li>
+</ol>
+</div>
+<div class="section" id="modules-and-classes">
+<h2>Modules and classes<a class="headerlink" href="#modules-and-classes" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">scrapy.contrib.itemparser.ItemParser</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">scrapy.contrib.itemparser.XPathItemParser</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">scrapy.contrib.itemparser.parsers.``MapConcat</span></code> <em>(ex. ``TreeExpander``)</em></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">scrapy.contrib.itemparser.parsers.``TakeFirst</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">scrapy.contrib.itemparser.parsers.Join</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">scrapy.contrib.itemparser.parsers.Identity</span></code></p></li>
+</ul>
+</div>
+<div class="section" id="public-api">
+<h2>Public API<a class="headerlink" href="#public-api" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">ItemParser.add_value()</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">ItemParser.replace_value()</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">ItemParser.populate_item()</span></code> <em>(returns item populated)</em></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">ItemParser.get_collected_values()</span></code> <em>(note the ‘s’ in values)</em></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">ItemParser.parse_field()</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">ItemParser.get_input_parser()</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">ItemParser.get_output_parser()</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">ItemParser.context</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">ItemParser.default_item_class</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">ItemParser.default_input_parser</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">ItemParser.default_output_parser</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">ItemParser.*field*_in</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">ItemParser.*field*_out</span></code></p></li>
+</ul>
+</div>
+<div class="section" id="alternative-public-api-proposal">
+<h2>Alternative Public API Proposal<a class="headerlink" href="#alternative-public-api-proposal" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">ItemLoader.add_value()</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">ItemLoader.replace_value()</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">ItemLoader.load_item()</span></code> <em>(returns loaded item)</em></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">ItemLoader.get_stored_values()</span></code> or <code class="docutils literal notranslate"><span class="pre">ItemLoader.get_values()</span></code> <em>(returns the ``ItemLoader values)</em></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">ItemLoader.get_output_value()</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">ItemLoader.get_input_processor()</span></code> or <code class="docutils literal notranslate"><span class="pre">ItemLoader.get_in_processor()</span></code> <em>(short version)</em></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">ItemLoader.get_output_processor()</span></code> or <code class="docutils literal notranslate"><span class="pre">ItemLoader.get_out_processor()</span></code> <em>(short version)</em></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">ItemLoader.context</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">ItemLoader.default_item_class</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">ItemLoader.default_input_processor</span></code> or <code class="docutils literal notranslate"><span class="pre">ItemLoader.default_in_processor</span></code> <em>(short version)</em></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">ItemLoader.default_output_processor</span></code> or <code class="docutils literal notranslate"><span class="pre">ItemLoader.default_out_processor</span></code> <em>(short version)</em></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">ItemLoader.*field*_in</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">ItemLoader.*field*_out</span></code></p></li>
+</ul>
+</div>
+<div class="section" id="usage-example-declaring-item-parsers">
+<h2>Usage example: declaring Item Parsers<a class="headerlink" href="#usage-example-declaring-item-parsers" title="Permalink to this headline">¶</a></h2>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="ch">#!python</span>
+<span class="kn">from</span> <span class="nn">scrapy.contrib.itemparser</span> <span class="kn">import</span> <span class="n">XPathItemParser</span><span class="p">,</span> <span class="n">parsers</span>
+
+<span class="k">class</span> <span class="nc">ProductParser</span><span class="p">(</span><span class="n">XPathItemParser</span><span class="p">):</span>
+    <span class="n">name_in</span> <span class="o">=</span> <span class="n">parsers</span><span class="o">.</span><span class="n">MapConcat</span><span class="p">(</span><span class="n">removetags</span><span class="p">,</span> <span class="n">filterx</span><span class="p">)</span>
+    <span class="n">price_in</span> <span class="o">=</span> <span class="n">parsers</span><span class="o">.</span><span class="n">MapConcat</span><span class="p">(</span><span class="o">...</span><span class="p">)</span>
+
+    <span class="n">price_out</span> <span class="o">=</span> <span class="n">parsers</span><span class="o">.</span><span class="n">TakeFirst</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="usage-example-declaring-parsers-in-fields">
+<h2>Usage example: declaring parsers in Fields<a class="headerlink" href="#usage-example-declaring-parsers-in-fields" title="Permalink to this headline">¶</a></h2>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="ch">#!python</span>
+<span class="k">class</span> <span class="nc">Product</span><span class="p">(</span><span class="n">Item</span><span class="p">):</span>
+    <span class="n">name</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">output_parser</span><span class="o">=</span><span class="n">parsers</span><span class="o">.</span><span class="n">Join</span><span class="p">(),</span> <span class="o">...</span><span class="p">)</span>
+    <span class="n">price</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">output_parser</span><span class="o">=</span><span class="n">parsers</span><span class="o">.</span><span class="n">TakeFirst</span><span class="p">(),</span> <span class="o">...</span><span class="p">)</span>
+
+    <span class="n">description</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">input_parser</span><span class="o">=</span><span class="n">parsers</span><span class="o">.</span><span class="n">MapConcat</span><span class="p">(</span><span class="n">removetags</span><span class="p">))</span>
+</pre></div>
+</div>
+</div>
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">aaa</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2020, lancer.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.4.0</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="../_sources/sep/sep-008.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

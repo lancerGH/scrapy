@@ -1,0 +1,426 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>SEP-016: Leg Spider &#8212; aaa 1 documentation</title>
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script src="../_static/jquery.js"></script>
+    <script src="../_static/underscore.js"></script>
+    <script src="../_static/doctools.js"></script>
+    <script src="../_static/language_data.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <table class="docutils align-default">
+<colgroup>
+<col style="width: 19%" />
+<col style="width: 81%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p>SEP</p></td>
+<td><p>16</p></td>
+</tr>
+<tr class="row-even"><td><p>Title</p></td>
+<td><p>Leg Spider</p></td>
+</tr>
+<tr class="row-odd"><td><p>Author</p></td>
+<td><p>Insophia Team</p></td>
+</tr>
+<tr class="row-even"><td><p>Created</p></td>
+<td><p>2010-06-03</p></td>
+</tr>
+<tr class="row-odd"><td><p>Status</p></td>
+<td><p>Superseded  by <a class="reference internal" href="sep-018.html"><span class="doc">SEP-018: Spider middleware v2</span></a></p></td>
+</tr>
+</tbody>
+</table>
+<div class="section" id="sep-016-leg-spider">
+<h1>SEP-016: Leg Spider<a class="headerlink" href="#sep-016-leg-spider" title="Permalink to this headline">¶</a></h1>
+<p>This SEP introduces a new kind of Spider called <code class="docutils literal notranslate"><span class="pre">LegSpider</span></code> which provides
+modular functionality which can be plugged to different spiders.</p>
+<div class="section" id="rationale">
+<h2>Rationale<a class="headerlink" href="#rationale" title="Permalink to this headline">¶</a></h2>
+<p>The purpose of Leg Spiders is to define an architecture for building spiders
+based on smaller well-tested components (aka. Legs) that can be combined to
+achieve the desired functionality. These reusable components will benefit all
+Scrapy users by building a repository of well-tested components (legs) that can
+be shared among different spiders and projects. Some of them will come bundled
+with Scrapy.</p>
+<p>The Legs themselves can be also combined with sub-legs, in a hierarchical
+fashion. Legs are also spiders themselves, hence the name “Leg Spider”.</p>
+</div>
+<div class="section" id="legspider-api">
+<h2><code class="docutils literal notranslate"><span class="pre">LegSpider</span></code> API<a class="headerlink" href="#legspider-api" title="Permalink to this headline">¶</a></h2>
+<p>A <code class="docutils literal notranslate"><span class="pre">LegSpider</span></code> is a <code class="docutils literal notranslate"><span class="pre">BaseSpider</span></code> subclass that adds the following attributes and methods:</p>
+<ul class="simple">
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">legs</span></code></dt><dd><ul>
+<li><p>legs composing this spider</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">process_response(response)</span></code></dt><dd><ul>
+<li><p>Process a (downloaded) response and return a list of requests and items</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">process_request(request)</span></code></dt><dd><ul>
+<li><p>Process a request after it has been extracted and before returning it from
+the spider</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">process_item(item)</span></code></dt><dd><ul>
+<li><p>Process an item after it has been extracted and before returning it from
+the spider</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">set_spider()</span></code></dt><dd><ul>
+<li><p>Defines the main spider associated with this Leg Spider, which is often
+used to configure the Leg Spider behavior.</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+</ul>
+</div>
+<div class="section" id="how-leg-spiders-work">
+<h2>How Leg Spiders work<a class="headerlink" href="#how-leg-spiders-work" title="Permalink to this headline">¶</a></h2>
+<ol class="arabic simple">
+<li><p>Each Leg Spider has zero or many Leg Spiders associated with it. When a
+response arrives, the Leg Spider process it with its <code class="docutils literal notranslate"><span class="pre">process_response</span></code>
+method and also the <code class="docutils literal notranslate"><span class="pre">process_response</span></code> method of all its “sub leg
+spiders”. Finally, the output of all of them is combined to produce the
+final aggregated output.</p></li>
+<li><p>Each element of the aggregated output of <code class="docutils literal notranslate"><span class="pre">process_response</span></code> is processed
+with either <code class="docutils literal notranslate"><span class="pre">process_item</span></code> or <code class="docutils literal notranslate"><span class="pre">process_request</span></code> before being returned
+from the spider. Similar to <code class="docutils literal notranslate"><span class="pre">process_response</span></code>, each item/request is
+processed with all <code class="docutils literal notranslate"><span class="pre">process_{request,item</span></code>} of the leg spiders composing
+the spider, and also with those of the spider itself.</p></li>
+</ol>
+</div>
+<div class="section" id="leg-spider-examples">
+<h2>Leg Spider examples<a class="headerlink" href="#leg-spider-examples" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="regex-html-link-extractor">
+<h3>Regex (HTML) Link Extractor<a class="headerlink" href="#regex-html-link-extractor" title="Permalink to this headline">¶</a></h3>
+<p>A typical application of LegSpider’s is to build Link Extractors. For example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="ch">#!python</span>
+<span class="k">class</span> <span class="nc">RegexHtmlLinkExtractor</span><span class="p">(</span><span class="n">LegSpider</span><span class="p">):</span>
+
+    <span class="k">def</span> <span class="nf">process_response</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">response</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">response</span><span class="p">,</span> <span class="n">HtmlResponse</span><span class="p">):</span>
+            <span class="n">allowed_regexes</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">spider</span><span class="o">.</span><span class="n">url_regexes_to_follow</span>
+            <span class="c1"># extract urls to follow using allowed_regexes</span>
+            <span class="k">return</span> <span class="p">[</span><span class="n">Request</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">urls_to_follow</span><span class="p">]</span>
+
+<span class="k">class</span> <span class="nc">MySpider</span><span class="p">(</span><span class="n">LegSpider</span><span class="p">):</span>
+
+    <span class="n">legs</span> <span class="o">=</span> <span class="p">[</span><span class="n">RegexHtmlLinkExtractor</span><span class="p">()]</span>
+    <span class="n">url_regexes_to_follow</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;/product.php?.*&#39;</span><span class="p">]</span>
+
+    <span class="k">def</span> <span class="nf">parse_response</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">response</span><span class="p">):</span>
+        <span class="c1"># parse response and extract items</span>
+        <span class="k">return</span> <span class="n">items</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="rss2-link-extractor">
+<h3>RSS2 link extractor<a class="headerlink" href="#rss2-link-extractor" title="Permalink to this headline">¶</a></h3>
+<p>This is a Leg Spider that can be used for following links from RSS2 feeds.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="ch">#!python</span>
+<span class="k">class</span> <span class="nc">Rss2LinkExtractor</span><span class="p">(</span><span class="n">LegSpider</span><span class="p">):</span>
+
+    <span class="k">def</span> <span class="nf">process_response</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">response</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">response</span><span class="o">.</span><span class="n">headers</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;Content-type&#39;</span><span class="p">)</span> <span class="s1">&#39;application/rss+xml&#39;</span><span class="p">:</span>
+            <span class="n">xs</span> <span class="o">=</span> <span class="n">XmlXPathSelector</span><span class="p">(</span><span class="n">response</span><span class="p">)</span>
+            <span class="n">urls</span> <span class="o">=</span> <span class="n">xs</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="s2">&quot;//item/link/text()&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">extract</span><span class="p">()</span>
+            <span class="k">return</span> <span class="p">[</span><span class="n">Request</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">urls</span><span class="p">]</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="callback-dispatcher-based-on-rules">
+<h3>Callback dispatcher based on rules<a class="headerlink" href="#callback-dispatcher-based-on-rules" title="Permalink to this headline">¶</a></h3>
+<p>Another example could be to build a callback dispatcher based on rules:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="ch">#!python</span>
+<span class="k">class</span> <span class="nc">CallbackRules</span><span class="p">(</span><span class="n">LegSpider</span><span class="p">):</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">a</span><span class="p">,</span> <span class="o">**</span><span class="n">kw</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">CallbackRules</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="o">*</span><span class="n">a</span><span class="p">,</span> <span class="o">**</span><span class="n">kw</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">regex</span><span class="p">,</span> <span class="n">method_name</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">spider</span><span class="o">.</span><span class="n">callback_rules</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">r</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="n">regex</span><span class="p">)</span>
+            <span class="n">m</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">spider</span><span class="p">,</span> <span class="n">method_name</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">m</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_rules</span><span class="p">[</span><span class="n">r</span><span class="p">]</span> <span class="o">=</span> <span class="n">m</span>
+
+    <span class="k">def</span> <span class="nf">process_response</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">response</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">regex</span><span class="p">,</span> <span class="n">method</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_rules</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">m</span> <span class="o">=</span> <span class="n">regex</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">url</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">m</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">method</span><span class="p">(</span><span class="n">response</span><span class="p">)</span>
+        <span class="k">return</span> <span class="p">[]</span>
+
+<span class="k">class</span> <span class="nc">MySpider</span><span class="p">(</span><span class="n">LegSpider</span><span class="p">):</span>
+
+    <span class="n">legs</span> <span class="o">=</span> <span class="p">[</span><span class="n">CallbackRules</span><span class="p">()]</span>
+    <span class="n">callback_rules</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s1">&#39;/product.php.*&#39;</span><span class="p">:</span> <span class="s1">&#39;parse_product&#39;</span><span class="p">,</span>
+        <span class="s1">&#39;/category.php.*&#39;</span><span class="p">:</span> <span class="s1">&#39;parse_category&#39;</span><span class="p">,</span>
+    <span class="p">}</span>
+
+    <span class="k">def</span> <span class="nf">parse_product</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">response</span><span class="p">):</span>
+        <span class="c1"># parse response and populate item</span>
+        <span class="k">return</span> <span class="n">item</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="url-canonicalizers">
+<h3>URL Canonicalizers<a class="headerlink" href="#url-canonicalizers" title="Permalink to this headline">¶</a></h3>
+<p>Another example could be for building URL canonicalizers:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="ch">#!python</span>
+<span class="k">class</span> <span class="nc">CanonializeUrl</span><span class="p">(</span><span class="n">LegSpider</span><span class="p">):</span>
+
+    <span class="k">def</span> <span class="nf">process_request</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">request</span><span class="p">):</span>
+        <span class="n">curl</span> <span class="o">=</span> <span class="n">canonicalize_url</span><span class="p">(</span><span class="n">request</span><span class="o">.</span><span class="n">url</span><span class="p">,</span> <span class="n">rules</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">spider</span><span class="o">.</span><span class="n">canonicalization_rules</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">request</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="n">url</span><span class="o">=</span><span class="n">curl</span><span class="p">)</span>
+
+<span class="k">class</span> <span class="nc">MySpider</span><span class="p">(</span><span class="n">LegSpider</span><span class="p">):</span>
+
+    <span class="n">legs</span> <span class="o">=</span> <span class="p">[</span><span class="n">CanonicalizeUrl</span><span class="p">()]</span>
+    <span class="n">canonicalization_rules</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;sort-query-args&#39;</span><span class="p">,</span> <span class="s1">&#39;normalize-percent-encoding&#39;</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span>
+
+    <span class="c1"># ...</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="setting-item-identifier">
+<h3>Setting item identifier<a class="headerlink" href="#setting-item-identifier" title="Permalink to this headline">¶</a></h3>
+<p>Another example could be for setting a unique identifier to items, based on
+certain fields:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="ch">#!python</span>
+<span class="k">class</span> <span class="nc">ItemIdSetter</span><span class="p">(</span><span class="n">LegSpider</span><span class="p">):</span>
+
+    <span class="k">def</span> <span class="nf">process_item</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">item</span><span class="p">):</span>
+        <span class="n">id_field</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">spider</span><span class="o">.</span><span class="n">id_field</span>
+        <span class="n">id_fields_to_hash</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">spider</span><span class="o">.</span><span class="n">id_fields_to_hash</span>
+        <span class="n">item</span><span class="p">[</span><span class="n">id_field</span><span class="p">]</span> <span class="o">=</span> <span class="n">make_hash_based_on_fields</span><span class="p">(</span><span class="n">item</span><span class="p">,</span> <span class="n">id_fields_to_hash</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">item</span>
+
+<span class="k">class</span> <span class="nc">MySpider</span><span class="p">(</span><span class="n">LegSpider</span><span class="p">):</span>
+
+    <span class="n">legs</span> <span class="o">=</span> <span class="p">[</span><span class="n">ItemIdSetter</span><span class="p">()]</span>
+    <span class="n">id_field</span> <span class="o">=</span> <span class="s1">&#39;guid&#39;</span>
+    <span class="n">id_fields_to_hash</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;supplier_name&#39;</span><span class="p">,</span> <span class="s1">&#39;supplier_id&#39;</span><span class="p">]</span>
+
+    <span class="k">def</span> <span class="nf">process_response</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">item</span><span class="p">):</span>
+        <span class="c1"># extract item from response</span>
+        <span class="k">return</span> <span class="n">item</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="combining-multiple-leg-spiders">
+<h3>Combining multiple leg spiders<a class="headerlink" href="#combining-multiple-leg-spiders" title="Permalink to this headline">¶</a></h3>
+<p>Here’s an example that combines functionality from multiple leg spiders:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="ch">#!python</span>
+<span class="k">class</span> <span class="nc">MySpider</span><span class="p">(</span><span class="n">LegSpider</span><span class="p">):</span>
+
+    <span class="n">legs</span> <span class="o">=</span> <span class="p">[</span><span class="n">RegexLinkExtractor</span><span class="p">(),</span> <span class="n">ParseRules</span><span class="p">(),</span> <span class="n">CanonicalizeUrl</span><span class="p">(),</span> <span class="n">ItemIdSetter</span><span class="p">()]</span>
+
+    <span class="n">url_regexes_to_follow</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;/product.php?.*&#39;</span><span class="p">]</span>
+
+    <span class="n">parse_rules</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s1">&#39;/product.php.*&#39;</span><span class="p">:</span> <span class="s1">&#39;parse_product&#39;</span><span class="p">,</span>
+        <span class="s1">&#39;/category.php.*&#39;</span><span class="p">:</span> <span class="s1">&#39;parse_category&#39;</span><span class="p">,</span>
+    <span class="p">}</span>
+
+    <span class="n">canonicalization_rules</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;sort-query-args&#39;</span><span class="p">,</span> <span class="s1">&#39;normalize-percent-encoding&#39;</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span>
+
+    <span class="n">id_field</span> <span class="o">=</span> <span class="s1">&#39;guid&#39;</span>
+    <span class="n">id_fields_to_hash</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;supplier_name&#39;</span><span class="p">,</span> <span class="s1">&#39;supplier_id&#39;</span><span class="p">]</span>
+
+    <span class="k">def</span> <span class="nf">process_product</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">item</span><span class="p">):</span>
+        <span class="c1"># extract item from response</span>
+        <span class="k">return</span> <span class="n">item</span>
+
+    <span class="k">def</span> <span class="nf">process_category</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">item</span><span class="p">):</span>
+        <span class="c1"># extract item from response</span>
+        <span class="k">return</span> <span class="n">item</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="section" id="leg-spiders-vs-spider-middlewares">
+<h2>Leg Spiders vs Spider middlewares<a class="headerlink" href="#leg-spiders-vs-spider-middlewares" title="Permalink to this headline">¶</a></h2>
+<p>A common question that would arise is when one should use Leg Spiders and when
+to use Spider middlewares. Leg Spiders functionality is meant to implement
+spider-specific functionality, like link extraction which has custom rules per
+spider. Spider middlewares, on the other hand, are meant to implement global
+functionality.</p>
+</div>
+<div class="section" id="when-not-to-use-leg-spiders">
+<h2>When not to use Leg Spiders<a class="headerlink" href="#when-not-to-use-leg-spiders" title="Permalink to this headline">¶</a></h2>
+<p>Leg Spiders are not a silver bullet to implement all kinds of spiders, so it’s
+important to keep in mind their scope and limitations, such as:</p>
+<ul class="simple">
+<li><p>Leg Spiders can’t filter duplicate requests, since they don’t have access to
+all requests at the same time. This functionality should be done in a spider
+or scheduler middleware.</p></li>
+<li><p>Leg Spiders are meant to be used for spiders whose behavior (requests &amp; items
+to extract) depends only on the current page and not previously crawled pages
+(aka. “context-free spiders”). If your spider has some custom logic with
+chained downloads (for example, multi-page items) then Leg Spiders may not be
+a good fit.</p></li>
+</ul>
+</div>
+<div class="section" id="legspider-proof-of-concept-implementation">
+<h2><code class="docutils literal notranslate"><span class="pre">LegSpider</span></code> proof-of-concept implementation<a class="headerlink" href="#legspider-proof-of-concept-implementation" title="Permalink to this headline">¶</a></h2>
+<p>Here’s a proof-of-concept implementation of <code class="docutils literal notranslate"><span class="pre">LegSpider</span></code>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="ch">#!python</span>
+<span class="kn">from</span> <span class="nn">scrapy.http</span> <span class="kn">import</span> <span class="n">Request</span>
+<span class="kn">from</span> <span class="nn">scrapy.item</span> <span class="kn">import</span> <span class="n">BaseItem</span>
+<span class="kn">from</span> <span class="nn">scrapy.spider</span> <span class="kn">import</span> <span class="n">BaseSpider</span>
+<span class="kn">from</span> <span class="nn">scrapy.utils.spider</span> <span class="kn">import</span> <span class="n">iterate_spider_output</span>
+
+
+<span class="k">class</span> <span class="nc">LegSpider</span><span class="p">(</span><span class="n">BaseSpider</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;A spider made of legs&quot;&quot;&quot;</span>
+
+    <span class="n">legs</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">LegSpider</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_legs</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="p">]</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">legs</span><span class="p">[:]</span>
+        <span class="k">for</span> <span class="n">l</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_legs</span><span class="p">:</span>
+            <span class="n">l</span><span class="o">.</span><span class="n">set_spider</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">parse</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">response</span><span class="p">):</span>
+        <span class="n">res</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_process_response</span><span class="p">(</span><span class="n">response</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">res</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">r</span><span class="p">,</span> <span class="n">BaseItem</span><span class="p">):</span>
+                <span class="k">yield</span> <span class="bp">self</span><span class="o">.</span><span class="n">_process_item</span><span class="p">(</span><span class="n">r</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">yield</span> <span class="bp">self</span><span class="o">.</span><span class="n">_process_request</span><span class="p">(</span><span class="n">r</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">process_response</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">response</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">[]</span>
+
+    <span class="k">def</span> <span class="nf">process_request</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">request</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">request</span>
+
+    <span class="k">def</span> <span class="nf">process_item</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">item</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">item</span>
+
+    <span class="k">def</span> <span class="nf">set_spider</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">spider</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">spider</span> <span class="o">=</span> <span class="n">spider</span>
+
+    <span class="k">def</span> <span class="nf">_process_response</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">response</span><span class="p">):</span>
+        <span class="n">res</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">l</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_legs</span><span class="p">:</span>
+            <span class="n">res</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">iterate_spider_output</span><span class="p">(</span><span class="n">l</span><span class="o">.</span><span class="n">process_response</span><span class="p">(</span><span class="n">response</span><span class="p">)))</span>
+        <span class="k">return</span> <span class="n">res</span>
+
+    <span class="k">def</span> <span class="nf">_process_request</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">request</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">l</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_legs</span><span class="p">:</span>
+            <span class="n">request</span> <span class="o">=</span> <span class="n">l</span><span class="o">.</span><span class="n">process_request</span><span class="p">(</span><span class="n">request</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">request</span>
+
+    <span class="k">def</span> <span class="nf">_process_item</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">item</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">l</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_legs</span><span class="p">:</span>
+            <span class="n">item</span> <span class="o">=</span> <span class="n">l</span><span class="o">.</span><span class="n">process_item</span><span class="p">(</span><span class="n">item</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">item</span>
+</pre></div>
+</div>
+</div>
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">aaa</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2020, lancer.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.4.0</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="../_sources/sep/sep-016.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

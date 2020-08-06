@@ -1,0 +1,220 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>SEP-007: ItemLoader processors library &#8212; aaa 1 documentation</title>
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script src="../_static/jquery.js"></script>
+    <script src="../_static/underscore.js"></script>
+    <script src="../_static/doctools.js"></script>
+    <script src="../_static/language_data.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <table class="docutils align-default">
+<colgroup>
+<col style="width: 19%" />
+<col style="width: 81%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p>SEP</p></td>
+<td><p>7</p></td>
+</tr>
+<tr class="row-even"><td><p>Title</p></td>
+<td><p>ItemLoader processors library</p></td>
+</tr>
+<tr class="row-odd"><td><p>Author</p></td>
+<td><p>Ismael Carnales</p></td>
+</tr>
+<tr class="row-even"><td><p>Created</p></td>
+<td><p>2009-08-10</p></td>
+</tr>
+<tr class="row-odd"><td><p>Status</p></td>
+<td><p>Draft</p></td>
+</tr>
+</tbody>
+</table>
+<div class="section" id="sep-007-itemloader-processors-library">
+<h1>SEP-007: ItemLoader processors library<a class="headerlink" href="#sep-007-itemloader-processors-library" title="Permalink to this headline">¶</a></h1>
+<p>This SEP proposes a library of <code class="docutils literal notranslate"><span class="pre">ItemLoader</span></code> processor to ship with Scrapy.</p>
+<div class="section" id="date-py">
+<h2>date.py<a class="headerlink" href="#date-py" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="to-date">
+<h3><code class="docutils literal notranslate"><span class="pre">to_date</span></code><a class="headerlink" href="#to-date" title="Permalink to this headline">¶</a></h3>
+<p>Converts a date string to a YYYY-MM-DD one suitable for <code class="docutils literal notranslate"><span class="pre">DateField</span></code></p>
+<p><strong>Decision</strong>: Obsolete. <code class="docutils literal notranslate"><span class="pre">DateField</span></code> doesn’t exists anymore.</p>
+</div>
+</div>
+<div class="section" id="extraction-py">
+<h2>extraction.py<a class="headerlink" href="#extraction-py" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="extract">
+<h3><code class="docutils literal notranslate"><span class="pre">extract</span></code><a class="headerlink" href="#extract" title="Permalink to this headline">¶</a></h3>
+<p>This adaptor tries to extract data from the given locations. Any
+<code class="docutils literal notranslate"><span class="pre">XPathSelector</span></code> in it will be extracted, and any other data  will be added
+as-is to the result.</p>
+<p><strong>Decision</strong>: Obsolete. Functionality included in <code class="docutils literal notranslate"><span class="pre">XpathLoader</span></code>.</p>
+<p><code class="docutils literal notranslate"><span class="pre">ExtractImageLinks</span></code></p>
+<p>This adaptor may receive either XPathSelectors pointing to the desired
+locations for finding image urls, or just a list of XPath expressions (which
+will be turned into selectors anyway).</p>
+<p><strong>Decision</strong>: XXX</p>
+</div>
+</div>
+<div class="section" id="markup-py">
+<h2>markup.py<a class="headerlink" href="#markup-py" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="remove-tags">
+<h3><code class="docutils literal notranslate"><span class="pre">remove_tags</span></code><a class="headerlink" href="#remove-tags" title="Permalink to this headline">¶</a></h3>
+<p>Factory that returns an adaptor for removing each tag in the <code class="docutils literal notranslate"><span class="pre">tags</span></code> parameter
+found in the given value.  If no <code class="docutils literal notranslate"><span class="pre">tags</span></code> are specified, all of them are
+removed.</p>
+<p><strong>Decision</strong>: XXX</p>
+</div>
+<div class="section" id="remove-root">
+<h3><code class="docutils literal notranslate"><span class="pre">remove_root</span></code><a class="headerlink" href="#remove-root" title="Permalink to this headline">¶</a></h3>
+<p>This adaptor removes the root tag of the given string/unicode, if it’s found.</p>
+<p><strong>Decision</strong>: XXX</p>
+</div>
+<div class="section" id="replace-escape">
+<h3><code class="docutils literal notranslate"><span class="pre">replace_escape</span></code><a class="headerlink" href="#replace-escape" title="Permalink to this headline">¶</a></h3>
+<p>Factory that returns an adaptor for removing/replacing each escape character in
+the <code class="docutils literal notranslate"><span class="pre">wich_ones</span></code> parameter found in the given value.</p>
+<p><strong>Decision</strong>: XXX</p>
+</div>
+<div class="section" id="unquote">
+<h3><code class="docutils literal notranslate"><span class="pre">unquote</span></code><a class="headerlink" href="#unquote" title="Permalink to this headline">¶</a></h3>
+<p>This factory returns an adaptor that receives a string or unicode, removes all
+of the CDATAs and entities (except the ones in CDATAs, and the ones you specify
+in the <code class="docutils literal notranslate"><span class="pre">keep</span></code> parameter) and then, returns a new string or unicode.</p>
+<p><strong>Decision</strong>: XXX</p>
+</div>
+</div>
+<div class="section" id="misc-py">
+<h2>misc.py<a class="headerlink" href="#misc-py" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="to-unicode">
+<h3><code class="docutils literal notranslate"><span class="pre">to_unicode</span></code><a class="headerlink" href="#to-unicode" title="Permalink to this headline">¶</a></h3>
+<p>Receives a string and converts it to unicode using the given encoding (if
+specified, else utf-8 is used) and returns a new unicode object. E.g:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">&gt;&gt;</span> <span class="n">to_unicode</span><span class="p">(</span><span class="s1">&#39;it costs 20</span><span class="se">\xe2\x82\xac</span><span class="s1">, or 30</span><span class="se">\xc2\xa3</span><span class="s1">&#39;</span><span class="p">)</span>
+<span class="p">[</span><span class="sa">u</span><span class="s1">&#39;it costs 20</span><span class="se">\u20ac</span><span class="s1">, or 30</span><span class="se">\xa3</span><span class="s1">&#39;</span><span class="p">]</span>
+</pre></div>
+</div>
+<p><strong>Decision</strong>: XXX</p>
+</div>
+<div class="section" id="clean-spaces">
+<h3><code class="docutils literal notranslate"><span class="pre">clean_spaces</span></code><a class="headerlink" href="#clean-spaces" title="Permalink to this headline">¶</a></h3>
+<p>Converts multispaces into single spaces for the given string. E.g:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">&gt;&gt;</span> <span class="n">clean_spaces</span><span class="p">(</span><span class="sa">u</span><span class="s1">&#39;Hello   sir&#39;</span><span class="p">)</span>
+<span class="sa">u</span><span class="s1">&#39;Hello sir&#39;</span>
+</pre></div>
+</div>
+<p><strong>Decision</strong>: XXX</p>
+</div>
+<div class="section" id="drop-empty">
+<h3><code class="docutils literal notranslate"><span class="pre">drop_empty</span></code><a class="headerlink" href="#drop-empty" title="Permalink to this headline">¶</a></h3>
+<p>Removes any index that evaluates to None from the provided iterable. E.g:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">&gt;&gt;</span> <span class="n">drop_empty</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="s1">&#39;this&#39;</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="s1">&#39;is&#39;</span><span class="p">,</span> <span class="kc">False</span><span class="p">,</span> <span class="s1">&#39;an example&#39;</span><span class="p">])</span>
+<span class="p">[</span><span class="s1">&#39;this&#39;</span><span class="p">,</span> <span class="s1">&#39;is&#39;</span><span class="p">,</span> <span class="s1">&#39;an example&#39;</span><span class="p">]</span>
+</pre></div>
+</div>
+<p><strong>Decision</strong>: Obsolete. Functionality included in reducers.</p>
+</div>
+<div class="section" id="delist">
+<h3><code class="docutils literal notranslate"><span class="pre">delist</span></code><a class="headerlink" href="#delist" title="Permalink to this headline">¶</a></h3>
+<p>This factory returns and adaptor that joins an iterable with the specified
+delimiter.</p>
+<p><strong>Decision</strong>: Obsolete. Functionality included in reducers.</p>
+</div>
+<div class="section" id="regex">
+<h3><code class="docutils literal notranslate"><span class="pre">Regex</span></code><a class="headerlink" href="#regex" title="Permalink to this headline">¶</a></h3>
+<p>This adaptor must receive either a list of strings or an XPathSelector and
+return a new list with the matches of the given strings with the given regular
+expression (which is passed by a keyword argument, and is mandatory for this
+adaptor).</p>
+<p><strong>Decision</strong>: XXX</p>
+</div>
+</div>
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">aaa</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2020, lancer.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.4.0</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="../_sources/sep/sep-007.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

@@ -1,0 +1,193 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>SEP-004: Library API &#8212; aaa 1 documentation</title>
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script src="../_static/jquery.js"></script>
+    <script src="../_static/underscore.js"></script>
+    <script src="../_static/doctools.js"></script>
+    <script src="../_static/language_data.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <table class="docutils align-default">
+<colgroup>
+<col style="width: 16%" />
+<col style="width: 84%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p>SEP</p></td>
+<td><p>4</p></td>
+</tr>
+<tr class="row-even"><td><p>Title</p></td>
+<td><p>Library-Like API for quick scraping</p></td>
+</tr>
+<tr class="row-odd"><td><p>Author</p></td>
+<td><p>Pablo Hoffman</p></td>
+</tr>
+<tr class="row-even"><td><p>Created</p></td>
+<td><p>2009-07-21</p></td>
+</tr>
+<tr class="row-odd"><td><p>Status</p></td>
+<td><p>Archived</p></td>
+</tr>
+</tbody>
+</table>
+<div class="section" id="sep-004-library-api">
+<h1>SEP-004: Library API<a class="headerlink" href="#sep-004-library-api" title="Permalink to this headline">¶</a></h1>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>the library API has been implemented, but slightly different from
+proposed in this SEP. You can run a Scrapy crawler inside a Twisted
+reactor, but not outside it.</p>
+</div>
+<div class="section" id="introduction">
+<h2>Introduction<a class="headerlink" href="#introduction" title="Permalink to this headline">¶</a></h2>
+<p>It would be desirable for Scrapy to provide a quick, “light-weight” mechanism
+for implementing crawlers by just using callback functions. That way you could
+use Scrapy as any standard library (like you would use os.walk) in a script
+without the overhead of having to create an entire project from scratch.</p>
+</div>
+<div class="section" id="proposed-api">
+<h2>Proposed API<a class="headerlink" href="#proposed-api" title="Permalink to this headline">¶</a></h2>
+<p>Here’s a simple proof-of-concept code of such script:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="ch">#!/usr/bin/env python</span>
+<span class="kn">from</span> <span class="nn">scrapy.http</span> <span class="kn">import</span> <span class="n">Request</span>
+<span class="kn">from</span> <span class="nn">scrapy</span> <span class="kn">import</span> <span class="n">Crawler</span>
+
+<span class="c1"># a container to hold scraped items</span>
+<span class="n">scraped_items</span> <span class="o">=</span> <span class="p">[]</span>
+
+<span class="k">def</span> <span class="nf">parse_start_page</span><span class="p">(</span><span class="n">response</span><span class="p">):</span>
+    <span class="c1"># collect urls to follow into urls_to_follow list</span>
+    <span class="n">requests</span> <span class="o">=</span> <span class="p">[</span><span class="n">Request</span><span class="p">(</span><span class="n">url</span><span class="p">,</span> <span class="n">callback</span><span class="o">=</span><span class="n">parse_other_page</span><span class="p">)</span> <span class="k">for</span> <span class="n">url</span> <span class="ow">in</span> <span class="n">urls_to_follow</span><span class="p">]</span>
+    <span class="k">return</span> <span class="n">requests</span>
+
+<span class="k">def</span> <span class="nf">parse_other_page</span><span class="p">(</span><span class="n">response</span><span class="p">):</span>
+    <span class="c1"># ... parse items from response content ...</span>
+    <span class="n">scraped_items</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">parsed_items</span><span class="p">)</span>
+
+<span class="n">start_urls</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;http://www.example.com/start_page.html&quot;</span><span class="p">]</span>
+
+<span class="n">cr</span> <span class="o">=</span> <span class="n">Crawler</span><span class="p">(</span><span class="n">start_urls</span><span class="p">,</span> <span class="n">callback</span><span class="o">=</span><span class="n">parse_start_page</span><span class="p">)</span>
+<span class="n">cr</span><span class="o">.</span><span class="n">run</span><span class="p">()</span> <span class="c1"># blocking call - this populates scraped_items</span>
+
+<span class="nb">print</span> <span class="s2">&quot;</span><span class="si">%d</span><span class="s2"> items scraped&quot;</span> <span class="o">%</span> <span class="nb">len</span><span class="p">(</span><span class="n">scraped_items</span><span class="p">)</span>
+<span class="c1"># ... do something more interesting with scraped_items ...</span>
+</pre></div>
+</div>
+<p>The behaviour of the Scrapy crawler would be controller by the Scrapy settings,
+naturally, just like any typical Scrapy project. But the default settings
+should be sufficient so as to not require adding any specific setting. But, at
+the same time, you could do it if you need to, say, for specifying a custom
+middleware.</p>
+<p>It shouldn’t be hard to implement this API as all this functionality is a
+(small) subset of the current Scrapy functionality. At the same time, it would
+provide an additional incentive for newcomers.</p>
+</div>
+<div class="section" id="crawler-class">
+<h2>Crawler class<a class="headerlink" href="#crawler-class" title="Permalink to this headline">¶</a></h2>
+<p>The Crawler class would have the following instance arguments (most of them
+have been singletons so far):</p>
+<ul class="simple">
+<li><p>engine</p></li>
+<li><p>settings</p></li>
+<li><p>spiders</p></li>
+<li><p>extensions</p></li>
+</ul>
+</div>
+<div class="section" id="spider-manager">
+<h2>Spider Manager<a class="headerlink" href="#spider-manager" title="Permalink to this headline">¶</a></h2>
+<p>The role of the spider manager will be to “resolve” spiders from URLs and
+domains. Also, it should be moved outside scrapy.spider (and only BaseSpider
+left there).</p>
+<p>There is also the <code class="docutils literal notranslate"><span class="pre">close_spider()</span></code> method which is called for all closed
+spiders, even when they weren’t resolved first by the spider manager. We need
+to decide what to do with this method.</p>
+</div>
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">aaa</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2020, lancer.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.4.0</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="../_sources/sep/sep-004.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

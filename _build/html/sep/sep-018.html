@@ -1,0 +1,855 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>SEP-018: Spider middleware v2 &#8212; aaa 1 documentation</title>
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script src="../_static/jquery.js"></script>
+    <script src="../_static/underscore.js"></script>
+    <script src="../_static/doctools.js"></script>
+    <script src="../_static/language_data.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <table class="docutils align-default">
+<colgroup>
+<col style="width: 26%" />
+<col style="width: 74%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p>SEP</p></td>
+<td><p>18</p></td>
+</tr>
+<tr class="row-even"><td><p>Title</p></td>
+<td><p>Spider Middleware v2</p></td>
+</tr>
+<tr class="row-odd"><td><p>Author</p></td>
+<td><p>Insophia Team</p></td>
+</tr>
+<tr class="row-even"><td><p>Created</p></td>
+<td><p>2010-06-20</p></td>
+</tr>
+<tr class="row-odd"><td><p>Status</p></td>
+<td><p>Draft (in progress)</p></td>
+</tr>
+</tbody>
+</table>
+<div class="section" id="sep-018-spider-middleware-v2">
+<h1>SEP-018: Spider middleware v2<a class="headerlink" href="#sep-018-spider-middleware-v2" title="Permalink to this headline">¶</a></h1>
+<p>This SEP introduces a new architecture for spider middlewares which provides a
+greater degree of modularity to combine functionality which can be plugged in
+from different (reusable) middlewares.</p>
+<p>The purpose of !SpiderMiddleware-v2 is to define an architecture that
+encourages more re-usability for building spiders based on smaller well-tested
+components. Those components can be global (similar to current spider
+middlewares) or per-spider that can be combined to achieve the desired
+functionality. These reusable components will benefit all Scrapy users by
+building a repository of well-tested components that can be shared among
+different spiders and projects. Some of them will come bundled with Scrapy.</p>
+<p>Unless explicitly stated, in this document “spider middleware” refers to the
+<strong>new</strong> spider middleware v2, not the old one.</p>
+<p>This document is a work in progress, see <a class="reference internal" href="#pending-issues">Pending Issues</a> below.</p>
+<div class="section" id="new-spider-middleware-api">
+<h2>New spider middleware API<a class="headerlink" href="#new-spider-middleware-api" title="Permalink to this headline">¶</a></h2>
+<p>A spider middleware can implement any of the following methods:</p>
+<ul>
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">process_response(response,</span> <span class="pre">request,</span> <span class="pre">spider)</span></code></dt><dd><ul class="simple">
+<li><p>Process a (downloaded) response</p></li>
+<li><p>Receives: The <code class="docutils literal notranslate"><span class="pre">response</span></code> to process, the <code class="docutils literal notranslate"><span class="pre">request</span></code> used to download
+the response (not necessarily the request sent from the spider), and the
+<code class="docutils literal notranslate"><span class="pre">spider</span></code> that requested it.</p></li>
+<li><p>Returns: A list containing requests and/or items</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">process_error(error,</span> <span class="pre">request,</span> <span class="pre">spider)</span></code>:</dt><dd><ul class="simple">
+<li><p>Process a error when trying to download a request, such as DNS errors,
+timeout errors, etc.</p></li>
+<li><p>Receives: The <code class="docutils literal notranslate"><span class="pre">error</span></code> caused, the <code class="docutils literal notranslate"><span class="pre">request</span></code> that caused it (not
+necessarily the request sent from the spider), and then <code class="docutils literal notranslate"><span class="pre">spider</span></code> that
+requested it.</p></li>
+<li><p>Returns: A list containing request and/or items</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl>
+<dt><code class="docutils literal notranslate"><span class="pre">process_request(request,</span> <span class="pre">response,</span> <span class="pre">spider)</span></code></dt><dd><ul>
+<li><p>Process a request after it has been extracted from the spider or previous
+middleware <code class="docutils literal notranslate"><span class="pre">process_response()</span></code> methods.</p></li>
+<li><p>Receives: The <code class="docutils literal notranslate"><span class="pre">request</span></code> to process, the <code class="docutils literal notranslate"><span class="pre">response</span></code> where the request
+was extracted from, and the <code class="docutils literal notranslate"><span class="pre">spider</span></code> that extracted it.</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Note: <code class="docutils literal notranslate"><span class="pre">response</span></code> is <code class="docutils literal notranslate"><span class="pre">None</span></code> for start requests, or requests injected
+directly (through <code class="docutils literal notranslate"><span class="pre">manager.scraper.process_request()</span></code> without
+specifying a response (see below)</p></li>
+</ul>
+</div></blockquote>
+</li>
+<li><p>Returns: A <code class="docutils literal notranslate"><span class="pre">Request</span></code> object (not necessarily the same received), or
+<code class="docutils literal notranslate"><span class="pre">None</span></code> in which case the request is dropped.</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">process_item(item,</span> <span class="pre">response,</span> <span class="pre">spider)</span></code></dt><dd><ul class="simple">
+<li><p>Process an item after it has been extracted from the spider or previous
+middleware <code class="docutils literal notranslate"><span class="pre">process_response()</span></code> methods.</p></li>
+<li><p>Receives: The <code class="docutils literal notranslate"><span class="pre">item</span></code> to process, the <code class="docutils literal notranslate"><span class="pre">response</span></code> where the item was
+extracted from, and the <code class="docutils literal notranslate"><span class="pre">spider</span></code> that extracted it.</p></li>
+<li><p>Returns: An <code class="docutils literal notranslate"><span class="pre">Item</span></code> object (not necessarily the same received), or
+<code class="docutils literal notranslate"><span class="pre">None</span></code> in which case the item is dropped.</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">next_request(spider)</span></code></dt><dd><ul class="simple">
+<li><p>Returns a the next request to crawl with this spider. This method is
+called when the spider is opened, and when it gets idle.</p></li>
+<li><p>Receives: The <code class="docutils literal notranslate"><span class="pre">spider</span></code> to return the next request for.</p></li>
+<li><p>Returns: A <code class="docutils literal notranslate"><span class="pre">Request</span></code> object.</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">open_spider(spider)</span></code></dt><dd><ul class="simple">
+<li><p>This can be used to allocate resources when a spider is opened.</p></li>
+<li><p>Receives: The <code class="docutils literal notranslate"><span class="pre">spider</span></code> that has been opened.</p></li>
+<li><p>Returns: nothing</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">close_spider(spider)</span></code></dt><dd><ul class="simple">
+<li><p>This can be used to free resources when a spider is closed.</p></li>
+<li><p>Receives: The <code class="docutils literal notranslate"><span class="pre">spider</span></code> that has been closed.</p></li>
+<li><p>Returns: nothing</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+</ul>
+</div>
+<div class="section" id="changes-to-core-api">
+<h2>Changes to core API<a class="headerlink" href="#changes-to-core-api" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="injecting-requests-to-crawl">
+<h3>Injecting requests to crawl<a class="headerlink" href="#injecting-requests-to-crawl" title="Permalink to this headline">¶</a></h3>
+<p>To inject start requests (or new requests without a response) to crawl, you used before:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">manager.engine.crawl(request,</span> <span class="pre">spider)</span></code></p></li>
+</ul>
+<p>Now you’ll use:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">manager.scraper.process_request(request,</span> <span class="pre">spider,</span> <span class="pre">response=None)</span></code></p></li>
+</ul>
+<p>Which (unlike the old <code class="docutils literal notranslate"><span class="pre">engine.crawl</span></code> will make the requests pass through the spider middleware <code class="docutils literal notranslate"><span class="pre">process_request()</span></code> method).</p>
+</div>
+<div class="section" id="scheduler-middleware-to-be-removed">
+<h3>Scheduler middleware to be removed<a class="headerlink" href="#scheduler-middleware-to-be-removed" title="Permalink to this headline">¶</a></h3>
+<p>We’re gonna remove the Scheduler Middleware, and move the duplicates filter to a new spider middleware.</p>
+</div>
+</div>
+<div class="section" id="scraper-high-level-api">
+<h2>Scraper high-level API<a class="headerlink" href="#scraper-high-level-api" title="Permalink to this headline">¶</a></h2>
+<p>There is a simpler high-level API - the Scraper API - which is the API used by the engine and other core components. This is also the API implemented by this new middleware, with its own internal architecture and hooks. Here is the Scraper API:</p>
+<ul class="simple">
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">process_response(response,</span> <span class="pre">request,</span> <span class="pre">spider)</span></code></dt><dd><ul>
+<li><p>returns iterable of items and requests</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">process_error(error,</span> <span class="pre">request,</span> <span class="pre">spider)</span></code></dt><dd><ul>
+<li><p>returns iterable of items and requests</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">process_request(request,</span> <span class="pre">spider,</span> <span class="pre">response=None)</span></code></dt><dd><ul>
+<li><p>injects a request to crawl for the given spider</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">process_item(item,</span> <span class="pre">spider,</span> <span class="pre">response)</span></code></dt><dd><ul>
+<li><p>injects a item to process with the item processor (typically the item
+pipeline)</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">next_request(spider)</span></code></dt><dd><ul>
+<li><p>returns the next request to process for the given spider</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">open_spider(spider)</span></code></dt><dd><ul>
+<li><p>opens a spider</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">close_spider(spider)</span></code></dt><dd><ul>
+<li><p>closes a spider</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+</ul>
+</div>
+<div class="section" id="how-it-works">
+<h2>How it works<a class="headerlink" href="#how-it-works" title="Permalink to this headline">¶</a></h2>
+<p>The spider middlewares are defined in certain order with the top-most being the
+one closer to the engine, and the bottom-most being the one closed to the
+spider.</p>
+<p>Example:</p>
+<ul class="simple">
+<li><p>Engine</p></li>
+<li><p>Global spider Middleware 3</p></li>
+<li><p>Global spider Middleware 2</p></li>
+<li><p>Global spider Middleware 1</p></li>
+<li><dl class="simple">
+<dt>Spider-specific middlewares (defined in <code class="docutils literal notranslate"><span class="pre">Spider.middlewares</span></code>)</dt><dd><ul>
+<li><p>Spider-specific middleware 3</p></li>
+<li><p>Spider-specific middleware 2</p></li>
+<li><p>Spider-specific middleware 1</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><p>Spider</p></li>
+</ul>
+<p>The data flow with Spider Middleware v2 is as follows:</p>
+<ol class="arabic simple">
+<li><p>When a response arrives from the engine, it it passed through all the spider
+middlewares (in descending order). The result of each middleware
+<code class="docutils literal notranslate"><span class="pre">process_response</span></code> is kept and then returned along with the spider
+callback result</p></li>
+<li><p>Each item of the aggregated result from previous point is passed through all
+middlewares (in ascending order) calling the <code class="docutils literal notranslate"><span class="pre">process_request</span></code> or
+<code class="docutils literal notranslate"><span class="pre">process_item</span></code> method accordingly, and their results are kept for passing
+to the following middlewares</p></li>
+</ol>
+<p>One of the spider middlewares (typically - but not necessarily - the last
+spider middleware closer to the spider, as shown in the example) will be a
+“spider-specific spider middleware” which would take care of calling the
+additional spider middlewares defined in the <code class="docutils literal notranslate"><span class="pre">Spider.middlewares</span></code> attribute,
+hence providing support for per-spider middlewares. If the middleware is well
+written, it should work both globally and per-spider.</p>
+</div>
+<div class="section" id="spider-specific-middlewares">
+<h2>Spider-specific middlewares<a class="headerlink" href="#spider-specific-middlewares" title="Permalink to this headline">¶</a></h2>
+<p>You can define in the spider itself a list of additional middlewares that will
+be used for this spider, and only this spider. If the middleware is well
+written, it should work both globally and per spider.</p>
+<p>Here’s an example that combines functionality from multiple middlewares into
+the same spider:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="ch">#!python</span>
+<span class="k">class</span> <span class="nc">MySpider</span><span class="p">(</span><span class="n">BaseSpider</span><span class="p">):</span>
+
+    <span class="n">middlewares</span> <span class="o">=</span> <span class="p">[</span><span class="n">RegexLinkExtractor</span><span class="p">(),</span> <span class="n">CallbackRules</span><span class="p">(),</span> <span class="n">CanonicalizeUrl</span><span class="p">(),</span>
+                   <span class="n">ItemIdSetter</span><span class="p">(),</span> <span class="n">OffsiteMiddleware</span><span class="p">()]</span>
+
+    <span class="n">allowed_domains</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;example.com&#39;</span><span class="p">,</span> <span class="s1">&#39;sub.example.com&#39;</span><span class="p">]</span>
+
+    <span class="n">url_regexes_to_follow</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;/product.php?.*&#39;</span><span class="p">]</span>
+
+    <span class="n">callback_rules</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s1">&#39;/product.php.*&#39;</span><span class="p">:</span> <span class="s1">&#39;parse_product&#39;</span><span class="p">,</span>
+        <span class="s1">&#39;/category.php.*&#39;</span><span class="p">:</span> <span class="s1">&#39;parse_category&#39;</span><span class="p">,</span>
+    <span class="p">}</span>
+
+    <span class="n">canonicalization_rules</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;sort-query-args&#39;</span><span class="p">,</span> <span class="s1">&#39;normalize-percent-encoding&#39;</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span>
+
+    <span class="n">id_field</span> <span class="o">=</span> <span class="s1">&#39;guid&#39;</span>
+    <span class="n">id_fields_to_hash</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;supplier_name&#39;</span><span class="p">,</span> <span class="s1">&#39;supplier_id&#39;</span><span class="p">]</span>
+
+    <span class="k">def</span> <span class="nf">parse_product</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">item</span><span class="p">):</span>
+        <span class="c1"># extract item from response</span>
+        <span class="k">return</span> <span class="n">item</span>
+
+    <span class="k">def</span> <span class="nf">parse_category</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">item</span><span class="p">):</span>
+        <span class="c1"># extract item from response</span>
+        <span class="k">return</span> <span class="n">item</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="the-spider-middleware-that-implements-spider-code">
+<h2>The Spider Middleware that implements spider code<a class="headerlink" href="#the-spider-middleware-that-implements-spider-code" title="Permalink to this headline">¶</a></h2>
+<p>There’s gonna be one middleware that will take care of calling the proper
+spider methods on each event such as:</p>
+<ul>
+<li><p>call <code class="docutils literal notranslate"><span class="pre">Request.callback</span></code> (for 200 responses) or <code class="docutils literal notranslate"><span class="pre">Request.errback</span></code> for
+non-200 responses and other errors. this behaviour can be changed through the
+<code class="docutils literal notranslate"><span class="pre">handle_httpstatus_list</span></code> spider attribute.</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>if <code class="docutils literal notranslate"><span class="pre">Request.callback</span></code> is not set it will use <code class="docutils literal notranslate"><span class="pre">Spider.parse</span></code></p></li>
+<li><p>if <code class="docutils literal notranslate"><span class="pre">Request.errback</span></code> is not set it will use <code class="docutils literal notranslate"><span class="pre">Spider.errback</span></code></p></li>
+</ul>
+</div></blockquote>
+</li>
+<li><p>call additional spider middlewares defined in the <code class="docutils literal notranslate"><span class="pre">Spider.middlewares</span></code>
+attribute</p></li>
+<li><p>call <code class="docutils literal notranslate"><span class="pre">Spider.next_request()</span></code> and <code class="docutils literal notranslate"><span class="pre">Spider.start_requests()</span></code> on
+<code class="docutils literal notranslate"><span class="pre">next_request()</span></code> middleware method (this would implicitly support backward
+compatibility)</p></li>
+</ul>
+</div>
+<div class="section" id="differences-with-spider-middleware-v1">
+<h2>Differences with Spider middleware v1<a class="headerlink" href="#differences-with-spider-middleware-v1" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li><p>adds support for per-spider middlewares through the <code class="docutils literal notranslate"><span class="pre">Spider.middlewares</span></code>
+attribute</p></li>
+<li><p>allows processing initial requests (those returned from
+<code class="docutils literal notranslate"><span class="pre">Spider.start_requests()</span></code>)</p></li>
+</ul>
+</div>
+<div class="section" id="use-cases-and-examples">
+<h2>Use cases and examples<a class="headerlink" href="#use-cases-and-examples" title="Permalink to this headline">¶</a></h2>
+<p>This section contains several examples and use cases for Spider Middlewares.
+Imports are intentionally removed for conciseness and clarity.</p>
+<div class="section" id="regex-html-link-extractor">
+<h3>Regex (HTML) Link Extractor<a class="headerlink" href="#regex-html-link-extractor" title="Permalink to this headline">¶</a></h3>
+<p>A typical application of spider middlewares could be to build Link Extractors.
+For example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="ch">#!python</span>
+<span class="k">class</span> <span class="nc">RegexHtmlLinkExtractor</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+
+    <span class="k">def</span> <span class="nf">process_response</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">response</span><span class="p">,</span> <span class="n">request</span><span class="p">,</span> <span class="n">spider</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">response</span><span class="p">,</span> <span class="n">HtmlResponse</span><span class="p">):</span>
+            <span class="n">allowed_regexes</span> <span class="o">=</span> <span class="n">spider</span><span class="o">.</span><span class="n">url_regexes_to_follow</span>
+            <span class="c1"># extract urls to follow using allowed_regexes</span>
+            <span class="k">return</span> <span class="p">[</span><span class="n">Request</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">urls_to_follow</span><span class="p">]</span>
+
+<span class="c1"># Example spider using this middleware</span>
+<span class="k">class</span> <span class="nc">MySpider</span><span class="p">(</span><span class="n">BaseSpider</span><span class="p">):</span>
+
+    <span class="n">middlewares</span> <span class="o">=</span> <span class="p">[</span><span class="n">RegexHtmlLinkExtractor</span><span class="p">()]</span>
+    <span class="n">url_regexes_to_follow</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;/product.php?.*&#39;</span><span class="p">]</span>
+
+    <span class="c1"># parsing callbacks below</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="rss2-link-extractor">
+<h3>RSS2 link extractor<a class="headerlink" href="#rss2-link-extractor" title="Permalink to this headline">¶</a></h3>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="ch">#!python</span>
+<span class="k">class</span> <span class="nc">Rss2LinkExtractor</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+
+    <span class="k">def</span> <span class="nf">process_response</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">response</span><span class="p">,</span> <span class="n">request</span><span class="p">,</span> <span class="n">spider</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">response</span><span class="o">.</span><span class="n">headers</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;Content-type&#39;</span><span class="p">)</span> <span class="s1">&#39;application/rss+xml&#39;</span><span class="p">:</span>
+            <span class="n">xs</span> <span class="o">=</span> <span class="n">XmlXPathSelector</span><span class="p">(</span><span class="n">response</span><span class="p">)</span>
+            <span class="n">urls</span> <span class="o">=</span> <span class="n">xs</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="s2">&quot;//item/link/text()&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">extract</span><span class="p">()</span>
+            <span class="k">return</span> <span class="p">[</span><span class="n">Request</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">urls</span><span class="p">]</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="callback-dispatcher-based-on-rules">
+<h3>Callback dispatcher based on rules<a class="headerlink" href="#callback-dispatcher-based-on-rules" title="Permalink to this headline">¶</a></h3>
+<p>Another example could be to build a callback dispatcher based on rules:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="ch">#!python</span>
+<span class="k">class</span> <span class="nc">CallbackRules</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">rules</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="n">dispatcher</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">signals</span><span class="o">.</span><span class="n">spider_opened</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">spider_opened</span><span class="p">)</span>
+        <span class="n">dispatcher</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">signals</span><span class="o">.</span><span class="n">spider_closed</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">spider_closed</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">spider_opened</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">spider</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">rules</span><span class="p">[</span><span class="n">spider</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">regex</span><span class="p">,</span> <span class="n">method_name</span> <span class="ow">in</span> <span class="n">spider</span><span class="o">.</span><span class="n">callback_rules</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">r</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="n">regex</span><span class="p">)</span>
+            <span class="n">m</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">spider</span><span class="p">,</span> <span class="n">method_name</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">m</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">rules</span><span class="p">[</span><span class="n">spider</span><span class="p">][</span><span class="n">r</span><span class="p">]</span> <span class="o">=</span> <span class="n">m</span>
+
+    <span class="k">def</span> <span class="nf">spider_closed</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">spider</span><span class="p">):</span>
+        <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">rules</span><span class="p">[</span><span class="n">spider</span><span class="p">]</span>
+
+    <span class="k">def</span> <span class="nf">process_response</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">response</span><span class="p">,</span> <span class="n">request</span><span class="p">,</span> <span class="n">spider</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">regex</span><span class="p">,</span> <span class="n">method</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">rules</span><span class="p">[</span><span class="n">spider</span><span class="p">]</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">m</span> <span class="o">=</span> <span class="n">regex</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">url</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">m</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">method</span><span class="p">(</span><span class="n">response</span><span class="p">)</span>
+        <span class="k">return</span> <span class="p">[]</span>
+
+<span class="c1"># Example spider using this middleware</span>
+<span class="k">class</span> <span class="nc">MySpider</span><span class="p">(</span><span class="n">BaseSpider</span><span class="p">):</span>
+
+    <span class="n">middlewares</span> <span class="o">=</span> <span class="p">[</span><span class="n">CallbackRules</span><span class="p">()]</span>
+    <span class="n">callback_rules</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s1">&#39;/product.php.*&#39;</span><span class="p">:</span> <span class="s1">&#39;parse_product&#39;</span><span class="p">,</span>
+        <span class="s1">&#39;/category.php.*&#39;</span><span class="p">:</span> <span class="s1">&#39;parse_category&#39;</span><span class="p">,</span>
+    <span class="p">}</span>
+
+    <span class="k">def</span> <span class="nf">parse_product</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">response</span><span class="p">):</span>
+        <span class="c1"># parse response and populate item</span>
+        <span class="k">return</span> <span class="n">item</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="url-canonicalizers">
+<h3>URL Canonicalizers<a class="headerlink" href="#url-canonicalizers" title="Permalink to this headline">¶</a></h3>
+<p>Another example could be for building URL canonicalizers:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="ch">#!python</span>
+<span class="k">class</span> <span class="nc">CanonializeUrl</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+
+    <span class="k">def</span> <span class="nf">process_request</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">request</span><span class="p">,</span> <span class="n">response</span><span class="p">,</span> <span class="n">spider</span><span class="p">):</span>
+        <span class="n">curl</span> <span class="o">=</span> <span class="n">canonicalize_url</span><span class="p">(</span><span class="n">request</span><span class="o">.</span><span class="n">url</span><span class="p">,</span>
+                                <span class="n">rules</span><span class="o">=</span><span class="n">spider</span><span class="o">.</span><span class="n">canonicalization_rules</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">request</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="n">url</span><span class="o">=</span><span class="n">curl</span><span class="p">)</span>
+
+<span class="c1"># Example spider using this middleware</span>
+<span class="k">class</span> <span class="nc">MySpider</span><span class="p">(</span><span class="n">BaseSpider</span><span class="p">):</span>
+
+    <span class="n">middlewares</span> <span class="o">=</span> <span class="p">[</span><span class="n">CanonicalizeUrl</span><span class="p">()]</span>
+    <span class="n">canonicalization_rules</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;sort-query-args&#39;</span><span class="p">,</span>
+                              <span class="s1">&#39;normalize-percent-encoding&#39;</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span>
+
+    <span class="c1"># ...</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="setting-item-identifier">
+<h3>Setting item identifier<a class="headerlink" href="#setting-item-identifier" title="Permalink to this headline">¶</a></h3>
+<p>Another example could be for setting a unique identifier to items, based on
+certain fields:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="ch">#!python</span>
+<span class="k">class</span> <span class="nc">ItemIdSetter</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+
+    <span class="k">def</span> <span class="nf">process_item</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">item</span><span class="p">,</span> <span class="n">response</span><span class="p">,</span> <span class="n">spider</span><span class="p">):</span>
+        <span class="n">id_field</span> <span class="o">=</span> <span class="n">spider</span><span class="o">.</span><span class="n">id_field</span>
+        <span class="n">id_fields_to_hash</span> <span class="o">=</span> <span class="n">spider</span><span class="o">.</span><span class="n">id_fields_to_hash</span>
+        <span class="n">item</span><span class="p">[</span><span class="n">id_field</span><span class="p">]</span> <span class="o">=</span> <span class="n">make_hash_based_on_fields</span><span class="p">(</span><span class="n">item</span><span class="p">,</span> <span class="n">id_fields_to_hash</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">item</span>
+
+<span class="c1"># Example spider using this middleware</span>
+<span class="k">class</span> <span class="nc">MySpider</span><span class="p">(</span><span class="n">BaseSpider</span><span class="p">):</span>
+
+    <span class="n">middlewares</span> <span class="o">=</span> <span class="p">[</span><span class="n">ItemIdSetter</span><span class="p">()]</span>
+    <span class="n">id_field</span> <span class="o">=</span> <span class="s1">&#39;guid&#39;</span>
+    <span class="n">id_fields_to_hash</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;supplier_name&#39;</span><span class="p">,</span> <span class="s1">&#39;supplier_id&#39;</span><span class="p">]</span>
+
+    <span class="k">def</span> <span class="nf">parse</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">response</span><span class="p">):</span>
+        <span class="c1"># extract item from response</span>
+        <span class="k">return</span> <span class="n">item</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="robots-txt-exclusion">
+<h3>robots.txt exclusion<a class="headerlink" href="#robots-txt-exclusion" title="Permalink to this headline">¶</a></h3>
+<p>A spider middleware to avoid visiting pages forbidden by robots.txt:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="ch">#!python</span>
+<span class="k">class</span> <span class="nc">SpiderInfo</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">useragent</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">useragent</span> <span class="o">=</span> <span class="n">useragent</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">parsers</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pending</span> <span class="o">=</span> <span class="n">defaultdict</span><span class="p">(</span><span class="nb">list</span><span class="p">)</span>
+
+
+<span class="k">class</span> <span class="nc">AllowAllParser</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+
+    <span class="k">def</span> <span class="nf">can_fetch</span><span class="p">(</span><span class="n">useragent</span><span class="p">,</span> <span class="n">url</span><span class="p">):</span>
+        <span class="k">return</span> <span class="kc">True</span>
+
+
+<span class="k">class</span> <span class="nc">RobotsTxtMiddleware</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+
+    <span class="n">REQUEST_PRIORITY</span> <span class="o">=</span> <span class="mi">1000</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">spiders</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="n">dispatcher</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">spider_opened</span><span class="p">,</span> <span class="n">signal</span><span class="o">=</span><span class="n">signals</span><span class="o">.</span><span class="n">spider_opened</span><span class="p">)</span>
+        <span class="n">dispatcher</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">spider_closed</span><span class="p">,</span> <span class="n">signal</span><span class="o">=</span><span class="n">signals</span><span class="o">.</span><span class="n">spider_closed</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">process_request</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">request</span><span class="p">,</span> <span class="n">response</span><span class="p">,</span> <span class="n">spider</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">process_start_request</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">request</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">process_start_request</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">request</span><span class="p">,</span> <span class="n">spider</span><span class="p">):</span>
+        <span class="n">info</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">spiders</span><span class="p">[</span><span class="n">spider</span><span class="p">]</span>
+        <span class="n">url</span> <span class="o">=</span> <span class="n">urlparse_cached</span><span class="p">(</span><span class="n">request</span><span class="p">)</span>
+        <span class="n">netloc</span> <span class="o">=</span> <span class="n">url</span><span class="o">.</span><span class="n">netloc</span>
+        <span class="k">if</span> <span class="n">netloc</span> <span class="ow">in</span> <span class="n">info</span><span class="o">.</span><span class="n">parsers</span><span class="p">:</span>
+            <span class="n">rp</span> <span class="o">=</span> <span class="n">info</span><span class="o">.</span><span class="n">parsers</span><span class="p">[</span><span class="n">netloc</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">rp</span><span class="o">.</span><span class="n">can_fetch</span><span class="p">(</span><span class="n">info</span><span class="o">.</span><span class="n">useragent</span><span class="p">,</span> <span class="n">request</span><span class="o">.</span><span class="n">url</span><span class="p">):</span>
+                <span class="n">res</span> <span class="o">=</span> <span class="n">request</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">spider</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="s2">&quot;Forbidden by robots.txt: </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">request</span><span class="p">)</span>
+                <span class="n">res</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">netloc</span> <span class="ow">in</span> <span class="n">info</span><span class="o">.</span><span class="n">pending</span><span class="p">:</span>
+                <span class="n">res</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">robotsurl</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="si">%s</span><span class="s2">://</span><span class="si">%s</span><span class="s2">/robots.txt&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">url</span><span class="o">.</span><span class="n">scheme</span><span class="p">,</span> <span class="n">netloc</span><span class="p">)</span>
+                <span class="n">meta</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;spider&#39;</span><span class="p">:</span> <span class="n">spider</span><span class="p">,</span> <span class="p">{</span><span class="s1">&#39;handle_httpstatus_list&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mi">403</span><span class="p">,</span> <span class="mi">404</span><span class="p">,</span> <span class="mi">500</span><span class="p">]}</span>
+                <span class="n">res</span> <span class="o">=</span> <span class="n">Request</span><span class="p">(</span><span class="n">robotsurl</span><span class="p">,</span> <span class="n">callback</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">parse_robots</span><span class="p">,</span>
+                    <span class="n">meta</span><span class="o">=</span><span class="n">meta</span><span class="p">,</span> <span class="n">priority</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">REQUEST_PRIORITY</span><span class="p">)</span>
+            <span class="n">info</span><span class="o">.</span><span class="n">pending</span><span class="p">[</span><span class="n">netloc</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">request</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">res</span>
+
+    <span class="k">def</span> <span class="nf">parse_robots</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">response</span><span class="p">):</span>
+        <span class="n">spider</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">request</span><span class="o">.</span><span class="n">meta</span><span class="p">[</span><span class="s1">&#39;spider&#39;</span><span class="p">]</span>
+        <span class="n">netloc</span> <span class="n">urlparse_cached</span><span class="p">(</span><span class="n">response</span><span class="p">)</span><span class="o">.</span><span class="n">netloc</span>
+        <span class="n">info</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">spiders</span><span class="p">[</span><span class="n">spider</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">response</span><span class="o">.</span><span class="n">status</span> <span class="mi">200</span><span class="p">;</span>
+            <span class="n">rp</span> <span class="o">=</span> <span class="n">robotparser</span><span class="o">.</span><span class="n">RobotFileParser</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">url</span><span class="p">)</span>
+            <span class="n">rp</span><span class="o">.</span><span class="n">parse</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">body</span><span class="o">.</span><span class="n">splitlines</span><span class="p">())</span>
+            <span class="n">info</span><span class="o">.</span><span class="n">parsers</span><span class="p">[</span><span class="n">netloc</span><span class="p">]</span> <span class="o">=</span> <span class="n">rp</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">info</span><span class="o">.</span><span class="n">parsers</span><span class="p">[</span><span class="n">netloc</span><span class="p">]</span> <span class="o">=</span> <span class="n">AllowAllParser</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">info</span><span class="o">.</span><span class="n">pending</span><span class="p">[</span><span class="n">netloc</span><span class="p">]</span>
+
+    <span class="k">def</span> <span class="nf">spider_opened</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">spider</span><span class="p">):</span>
+        <span class="n">ua</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">spider</span><span class="p">,</span> <span class="s1">&#39;user_agent&#39;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">or</span> <span class="n">settings</span><span class="p">[</span><span class="s1">&#39;USER_AGENT&#39;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">spiders</span><span class="p">[</span><span class="n">spider</span><span class="p">]</span> <span class="o">=</span> <span class="n">SpiderInfo</span><span class="p">(</span><span class="n">ua</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">spider_closed</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">spider</span><span class="p">):</span>
+        <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">spiders</span><span class="p">[</span><span class="n">spider</span><span class="p">]</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="offsite-middleware">
+<h3>Offsite middleware<a class="headerlink" href="#offsite-middleware" title="Permalink to this headline">¶</a></h3>
+<p>This is a port of the Offsite middleware to the new spider middleware API:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="ch">#!python</span>
+<span class="k">class</span> <span class="nc">SpiderInfo</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">host_regex</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">host_regex</span> <span class="o">=</span> <span class="n">host_regex</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">hosts_seen</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+
+
+<span class="k">class</span> <span class="nc">OffsiteMiddleware</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">spiders</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="n">dispatcher</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">spider_opened</span><span class="p">,</span> <span class="n">signal</span><span class="o">=</span><span class="n">signals</span><span class="o">.</span><span class="n">spider_opened</span><span class="p">)</span>
+        <span class="n">dispatcher</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">spider_closed</span><span class="p">,</span> <span class="n">signal</span><span class="o">=</span><span class="n">signals</span><span class="o">.</span><span class="n">spider_closed</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">process_request</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">request</span><span class="p">,</span> <span class="n">response</span><span class="p">,</span> <span class="n">spider</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">process_start_request</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">request</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">process_start_request</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">request</span><span class="p">,</span> <span class="n">spider</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">should_follow</span><span class="p">(</span><span class="n">request</span><span class="p">,</span> <span class="n">spider</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">request</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">info</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">spiders</span><span class="p">[</span><span class="n">spider</span><span class="p">]</span>
+            <span class="n">host</span> <span class="o">=</span> <span class="n">urlparse_cached</span><span class="p">(</span><span class="n">x</span><span class="p">)</span><span class="o">.</span><span class="n">hostname</span>
+            <span class="k">if</span> <span class="n">host</span> <span class="ow">and</span> <span class="n">host</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">info</span><span class="o">.</span><span class="n">hosts_seen</span><span class="p">:</span>
+               <span class="n">spider</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="s2">&quot;Filtered offsite request to </span><span class="si">%r</span><span class="s2">: </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">host</span><span class="p">,</span> <span class="n">request</span><span class="p">))</span>
+               <span class="n">info</span><span class="o">.</span><span class="n">hosts_seen</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">host</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">should_follow</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">request</span><span class="p">,</span> <span class="n">spider</span><span class="p">):</span>
+        <span class="n">info</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">spiders</span><span class="p">[</span><span class="n">spider</span><span class="p">]</span>
+        <span class="c1"># hostname can be None for wrong urls (like javascript links)</span>
+        <span class="n">host</span> <span class="o">=</span> <span class="n">urlparse_cached</span><span class="p">(</span><span class="n">request</span><span class="p">)</span><span class="o">.</span><span class="n">hostname</span> <span class="ow">or</span> <span class="s1">&#39;&#39;</span>
+        <span class="k">return</span> <span class="nb">bool</span><span class="p">(</span><span class="n">info</span><span class="o">.</span><span class="n">regex</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="n">host</span><span class="p">))</span>
+
+    <span class="k">def</span> <span class="nf">get_host_regex</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">spider</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Override this method to implement a different offsite policy&quot;&quot;&quot;</span>
+        <span class="n">domains</span> <span class="o">=</span> <span class="p">[</span><span class="n">d</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;.&#39;</span><span class="p">,</span> <span class="sa">r</span><span class="s1">&#39;\.&#39;</span><span class="p">)</span> <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="n">spider</span><span class="o">.</span><span class="n">allowed_domains</span><span class="p">]</span>
+        <span class="n">regex</span> <span class="o">=</span> <span class="sa">r</span><span class="s1">&#39;^(.*\.)?(</span><span class="si">%s</span><span class="s1">)$&#39;</span> <span class="o">%</span> <span class="s1">&#39;|&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">domains</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="n">regex</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">spider_opened</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">spider</span><span class="p">):</span>
+        <span class="n">info</span> <span class="o">=</span> <span class="n">SpiderInfo</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_host_regex</span><span class="p">(</span><span class="n">spider</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">spiders</span><span class="p">[</span><span class="n">spider</span><span class="p">]</span> <span class="o">=</span> <span class="n">info</span>
+
+    <span class="k">def</span> <span class="nf">spider_closed</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">spider</span><span class="p">):</span>
+        <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">spiders</span><span class="p">[</span><span class="n">spider</span><span class="p">]</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="limit-url-length">
+<h3>Limit URL length<a class="headerlink" href="#limit-url-length" title="Permalink to this headline">¶</a></h3>
+<p>A middleware to filter out requests with long urls:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="ch">#!python</span>
+
+<span class="k">class</span> <span class="nc">LimitUrlLength</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">maxlength</span> <span class="o">=</span> <span class="n">settings</span><span class="o">.</span><span class="n">getint</span><span class="p">(</span><span class="s1">&#39;URLLENGTH_LIMIT&#39;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">process_request</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">request</span><span class="p">,</span> <span class="n">response</span><span class="p">,</span> <span class="n">spider</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">process_start_request</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">request</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">process_start_request</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">request</span><span class="p">,</span> <span class="n">spider</span><span class="p">):</span>
+         <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">request</span><span class="o">.</span><span class="n">url</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">maxlength</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">request</span>
+         <span class="n">spider</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="s2">&quot;Ignoring request (url length &gt; </span><span class="si">%d</span><span class="s2">): </span><span class="si">%s</span><span class="s2"> &quot;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">maxlength</span><span class="p">,</span> <span class="n">request</span><span class="o">.</span><span class="n">url</span><span class="p">))</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="set-referer">
+<h3>Set Referer<a class="headerlink" href="#set-referer" title="Permalink to this headline">¶</a></h3>
+<p>A middleware to set the Referer:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="ch">#!python</span>
+<span class="k">class</span> <span class="nc">SetReferer</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+
+    <span class="k">def</span> <span class="nf">process_request</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">request</span><span class="p">,</span> <span class="n">response</span><span class="p">,</span> <span class="n">spider</span><span class="p">):</span>
+        <span class="n">request</span><span class="o">.</span><span class="n">headers</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s1">&#39;Referer&#39;</span><span class="p">,</span> <span class="n">response</span><span class="o">.</span><span class="n">url</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">request</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="set-and-limit-crawling-depth">
+<h3>Set and limit crawling depth<a class="headerlink" href="#set-and-limit-crawling-depth" title="Permalink to this headline">¶</a></h3>
+<p>A middleware to set (and limit) the request/response depth, taken from the
+start requests:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="ch">#!python</span>
+<span class="k">class</span> <span class="nc">SetLimitDepth</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">maxdepth</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">maxdepth</span> <span class="o">=</span> <span class="n">maxdepth</span> <span class="ow">or</span> <span class="n">settings</span><span class="o">.</span><span class="n">getint</span><span class="p">(</span><span class="s1">&#39;DEPTH_LIMIT&#39;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">process_request</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">request</span><span class="p">,</span> <span class="n">response</span><span class="p">,</span> <span class="n">spider</span><span class="p">):</span>
+        <span class="n">depth</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">request</span><span class="o">.</span><span class="n">meta</span><span class="p">[</span><span class="s1">&#39;depth&#39;</span><span class="p">]</span> <span class="o">+</span> <span class="mi">1</span>
+        <span class="n">request</span><span class="o">.</span><span class="n">meta</span><span class="p">[</span><span class="s1">&#39;depth&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">depth</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">maxdepth</span> <span class="ow">or</span> <span class="n">depth</span> <span class="o">&lt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">maxdepth</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">request</span>
+        <span class="n">spider</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="s2">&quot;Ignoring link (depth &gt; </span><span class="si">%d</span><span class="s2">): </span><span class="si">%s</span><span class="s2"> &quot;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">maxdepth</span><span class="p">,</span> <span class="n">request</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">process_start_request</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">request</span><span class="p">,</span> <span class="n">spider</span><span class="p">):</span>
+        <span class="n">request</span><span class="o">.</span><span class="n">meta</span><span class="p">[</span><span class="s1">&#39;depth&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">return</span> <span class="n">request</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="filter-duplicate-requests">
+<h3>Filter duplicate requests<a class="headerlink" href="#filter-duplicate-requests" title="Permalink to this headline">¶</a></h3>
+<p>A middleware to filter out requests already seen:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="ch">#!python</span>
+<span class="k">class</span> <span class="nc">FilterDuplicates</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">clspath</span> <span class="o">=</span> <span class="n">settings</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;DUPEFILTER_CLASS&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dupefilter</span> <span class="o">=</span> <span class="n">load_object</span><span class="p">(</span><span class="n">clspath</span><span class="p">)()</span>
+        <span class="n">dispatcher</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">spider_opened</span><span class="p">,</span> <span class="n">signal</span><span class="o">=</span><span class="n">signals</span><span class="o">.</span><span class="n">spider_opened</span><span class="p">)</span>
+        <span class="n">dispatcher</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">spider_closed</span><span class="p">,</span> <span class="n">signal</span><span class="o">=</span><span class="n">signals</span><span class="o">.</span><span class="n">spider_closed</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">enqueue_request</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">spider</span><span class="p">,</span> <span class="n">request</span><span class="p">):</span>
+        <span class="n">seen</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dupefilter</span><span class="o">.</span><span class="n">request_seen</span><span class="p">(</span><span class="n">spider</span><span class="p">,</span> <span class="n">request</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">seen</span> <span class="ow">or</span> <span class="n">request</span><span class="o">.</span><span class="n">dont_filter</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">request</span>
+
+    <span class="k">def</span> <span class="nf">spider_opened</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">spider</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dupefilter</span><span class="o">.</span><span class="n">open_spider</span><span class="p">(</span><span class="n">spider</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">spider_closed</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">spider</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dupefilter</span><span class="o">.</span><span class="n">close_spider</span><span class="p">(</span><span class="n">spider</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="scrape-data-using-parsley">
+<h3>Scrape data using Parsley<a class="headerlink" href="#scrape-data-using-parsley" title="Permalink to this headline">¶</a></h3>
+<p>A middleware to Scrape data using Parsley as described in UsingParsley</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="ch">#!python</span>
+<span class="kn">from</span> <span class="nn">pyparsley</span> <span class="kn">import</span> <span class="n">PyParsley</span>
+
+<span class="k">class</span> <span class="nc">ParsleyExtractor</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">parslet_json_code</span><span class="p">):</span>
+        <span class="n">parslet</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">parselet_json_code</span><span class="p">)</span>
+        <span class="k">class</span> <span class="nc">ParsleyItem</span><span class="p">(</span><span class="n">Item</span><span class="p">):</span>
+            <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">a</span><span class="p">,</span> <span class="o">**</span><span class="n">kw</span><span class="p">):</span>
+                <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">parslet</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">fields</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">()</span>
+            <span class="nb">super</span><span class="p">(</span><span class="n">ParsleyItem</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="o">*</span><span class="n">a</span><span class="p">,</span> <span class="o">**</span><span class="n">kw</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">item_class</span> <span class="o">=</span> <span class="n">ParsleyItem</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">parsley</span> <span class="o">=</span> <span class="n">PyParsley</span><span class="p">(</span><span class="n">parslet</span><span class="p">,</span> <span class="n">output</span><span class="o">=</span><span class="s1">&#39;python&#39;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">process_response</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">response</span><span class="p">,</span> <span class="n">request</span><span class="p">,</span> <span class="n">spider</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">item_class</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">parsly</span><span class="o">.</span><span class="n">parse</span><span class="p">(</span><span class="n">string</span><span class="o">=</span><span class="n">response</span><span class="o">.</span><span class="n">body</span><span class="p">))</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="section" id="pending-issues">
+<h2>Pending issues<a class="headerlink" href="#pending-issues" title="Permalink to this headline">¶</a></h2>
+<p>Resolved:</p>
+<ul>
+<li><p>how to make <code class="docutils literal notranslate"><span class="pre">start_requests()</span></code> output pass through spider middleware
+<code class="docutils literal notranslate"><span class="pre">process_request()</span></code>?</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Start requests will be injected through
+<code class="docutils literal notranslate"><span class="pre">manager.scraper.process_request()</span></code> instead of
+<code class="docutils literal notranslate"><span class="pre">manager.engine.crawl()</span></code></p></li>
+</ul>
+</div></blockquote>
+</li>
+<li><dl class="simple">
+<dt>should we support adding additional start requests from a spider middleware?</dt><dd><ul class="simple">
+<li><p>Yes - there is a spider middleware method (<code class="docutils literal notranslate"><span class="pre">start_requests</span></code>) for that</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><p>should <code class="docutils literal notranslate"><span class="pre">process_response()</span></code> receive a <code class="docutils literal notranslate"><span class="pre">request</span></code> argument with the
+<code class="docutils literal notranslate"><span class="pre">request</span></code> that originated it?. <code class="docutils literal notranslate"><span class="pre">response.request</span></code> is the latest request,
+not the original one (think of redirections), but it does carry the <code class="docutils literal notranslate"><span class="pre">meta</span></code>
+of the original one. The original one may not be available anymore (in
+memory) if we’re using a persistent scheduler., but in that case it would be
+the deserialized request from the persistent scheduler queue.</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>No - this would make implementation more complex and we’re not sure it’s
+really needed</p></li>
+</ul>
+</div></blockquote>
+</li>
+<li><p>how to make sure <code class="docutils literal notranslate"><span class="pre">Request.errback</span></code> is always called if there is a problem
+with the request?. Do we need to ensure that?.  Requests filtered out (by
+returning <code class="docutils literal notranslate"><span class="pre">None</span></code>) in the <code class="docutils literal notranslate"><span class="pre">process_request()</span></code> method will never be
+callback-ed or even errback-ed. this could be a problem for spiders that want
+to be notified if their requests are dropped. should we support this
+notification somehow or document (the lack of) it properly?</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>We won’t support notifications of dropped requests, because: 1. it’s hard
+to implement and unreliable, 2. it’s against not friendly with request
+persistence, 3. we can’t come up with a good api.</p></li>
+</ul>
+</div></blockquote>
+</li>
+<li><p>should we make the list of default spider middlewares empty? (or the
+“per-spider” spider middleware alone)</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>No - there are some useful spider middlewares that it’s worth enabling by
+default like referer, duplicates, robots2</p></li>
+</ul>
+</div></blockquote>
+</li>
+<li><dl class="simple">
+<dt>should we allow returning deferreds in spider middleware methods?</dt><dd><ul class="simple">
+<li><p>Yes - we should build a Deferred with the spider middleware methods as
+callbacks and that would implicitly support returning Deferreds</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><p>should we support processing responses before they’re processed by the
+spider, because <code class="docutils literal notranslate"><span class="pre">process_response</span></code> runs “in parallel” to the spider
+callback, and can’t stop from running it.</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>No - we haven’t seen a practical use case for this, so we won’t add an
+additional hook. It should be trivial to add it later, if needed.</p></li>
+</ul>
+</div></blockquote>
+</li>
+<li><p>should we make a spider middleware to handle calling the request and spider
+callback, instead of letting the Scraper component do it?</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Yes - there’s gonna a spider middleware for execution spider-specific code
+such as callbacks and also custom middlewares</p></li>
+</ul>
+</div></blockquote>
+</li>
+</ul>
+</div>
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">aaa</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2020, lancer.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.4.0</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="../_sources/sep/sep-018.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

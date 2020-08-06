@@ -1,0 +1,251 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>SEP-003 - Nested items API (ItemField) &#8212; aaa 1 documentation</title>
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script src="../_static/jquery.js"></script>
+    <script src="../_static/underscore.js"></script>
+    <script src="../_static/doctools.js"></script>
+    <script src="../_static/language_data.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <p>Author   Pablo Hoffman
+Created  2009-07-19
+Status   Obsolete by <span class="xref std std-ref">sep-008</span>
+==============================</p>
+<div class="section" id="sep-003-nested-items-api-itemfield">
+<h1>SEP-003 - Nested items API (ItemField)<a class="headerlink" href="#sep-003-nested-items-api-itemfield" title="Permalink to this headline">¶</a></h1>
+<p>This page presents different usage scenarios for the new nested items field API
+called !ItemField.</p>
+<div class="section" id="prerequisites">
+<h2>Prerequisites<a class="headerlink" href="#prerequisites" title="Permalink to this headline">¶</a></h2>
+<p>This API proposal relies on the following API:</p>
+<ol class="arabic simple">
+<li><p>instantiating a item with an item instance as its first argument (i.e.
+<code class="docutils literal notranslate"><span class="pre">item2</span> <span class="pre">=</span> <span class="pre">MyItem(item1)</span></code>) must return a <strong>copy</strong> of the first item
+instance)</p></li>
+<li><p>items can be instantiated using this syntax: <code class="docutils literal notranslate"><span class="pre">item</span> <span class="pre">=</span> <span class="pre">Item(attr1=value1,</span>
+<span class="pre">attr2=value2)</span></code></p></li>
+</ol>
+</div>
+<div class="section" id="proposed-implementation-of-itemfield">
+<h2>Proposed Implementation of ItemField<a class="headerlink" href="#proposed-implementation-of-itemfield" title="Permalink to this headline">¶</a></h2>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="ch">#!python</span>
+<span class="kn">from</span> <span class="nn">scrapy.item.fields</span> <span class="kn">import</span> <span class="n">BaseField</span>
+
+<span class="k">class</span> <span class="nc">ItemField</span><span class="p">(</span><span class="n">BaseField</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">item_type</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_item_type</span> <span class="o">=</span> <span class="n">item_type</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">ItemField</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">default</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">to_python</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_item_type</span><span class="p">(</span><span class="n">value</span><span class="p">)</span> <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_item_type</span><span class="p">)</span> <span class="k">else</span> <span class="n">value</span>
+
+    <span class="k">def</span> <span class="nf">get_default</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># WARNING: returns default item instead of a copy - this must be</span>
+        <span class="c1"># well documented, as Items are mutable objects and may lead to</span>
+        <span class="c1"># unexpected behaviors # always returning a copy may not be desirable</span>
+        <span class="c1"># either (see Supplier item, for example). this method can be</span>
+        <span class="c1"># overridden to change this behaviour</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_default</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="usage-scenarios">
+<h2>Usage Scenarios<a class="headerlink" href="#usage-scenarios" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="defining-an-item-containing-itemfield-s">
+<h3>Defining an item containing ItemField’s<a class="headerlink" href="#defining-an-item-containing-itemfield-s" title="Permalink to this headline">¶</a></h3>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="ch">#!python</span>
+<span class="kn">from</span> <span class="nn">scrapy.item.models</span> <span class="kn">import</span> <span class="n">Item</span>
+<span class="kn">from</span> <span class="nn">scrapy.item.fields</span> <span class="kn">import</span> <span class="n">ListField</span><span class="p">,</span> <span class="n">ItemField</span><span class="p">,</span> <span class="n">TextField</span><span class="p">,</span> <span class="n">UrlField</span><span class="p">,</span> <span class="n">DecimalField</span>
+
+<span class="k">class</span> <span class="nc">Supplier</span><span class="p">(</span><span class="n">Item</span><span class="p">):</span>
+    <span class="n">name</span> <span class="o">=</span> <span class="n">TextField</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="s2">&quot;anonymous supplier&quot;</span><span class="p">)</span>
+    <span class="n">url</span> <span class="o">=</span> <span class="n">UrlField</span><span class="p">()</span>
+
+<span class="k">class</span> <span class="nc">Variant</span><span class="p">(</span><span class="n">Item</span><span class="p">):</span>
+    <span class="n">name</span> <span class="o">=</span> <span class="n">TextField</span><span class="p">(</span><span class="n">required</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">url</span> <span class="o">=</span> <span class="n">UrlField</span><span class="p">()</span>
+    <span class="n">price</span> <span class="o">=</span> <span class="n">DecimalField</span><span class="p">()</span>
+
+<span class="k">class</span> <span class="nc">Product</span><span class="p">(</span><span class="n">Variant</span><span class="p">):</span>
+    <span class="n">supplier</span> <span class="o">=</span> <span class="n">ItemField</span><span class="p">(</span><span class="n">Supplier</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="n">Supplier</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;default supplier&quot;</span><span class="p">)</span>
+    <span class="n">variants</span> <span class="o">=</span> <span class="n">ListField</span><span class="p">(</span><span class="n">ItemField</span><span class="p">(</span><span class="n">Variant</span><span class="p">))</span>
+
+    <span class="c1"># these ones are used for documenting default value examples</span>
+    <span class="n">supplier2</span> <span class="o">=</span> <span class="n">ItemField</span><span class="p">(</span><span class="n">Supplier</span><span class="p">)</span>
+    <span class="n">variants2</span> <span class="o">=</span> <span class="n">ListField</span><span class="p">(</span><span class="n">ItemField</span><span class="p">(</span><span class="n">Variant</span><span class="p">),</span> <span class="n">default</span><span class="o">=</span><span class="p">[])</span>
+</pre></div>
+</div>
+<p>It’s important to note here that the (perhaps most intuitive) way of defining a
+Product-Variant relationship (i.e. defining a recursive !ItemField) doesn’t
+work. For example, this fails to compile:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="ch">#!python</span>
+<span class="k">class</span> <span class="nc">Product</span><span class="p">(</span><span class="n">Item</span><span class="p">):</span>
+    <span class="n">variants</span> <span class="o">=</span> <span class="n">ItemField</span><span class="p">(</span><span class="n">Product</span><span class="p">)</span> <span class="c1"># Fails to compile</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="assigning-an-item-field">
+<h3>Assigning an item field<a class="headerlink" href="#assigning-an-item-field" title="Permalink to this headline">¶</a></h3>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="ch">#!python</span>
+<span class="n">supplier</span> <span class="o">=</span> <span class="n">Supplier</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;Supplier 1&quot;</span><span class="p">,</span> <span class="n">url</span><span class="o">=</span><span class="s2">&quot;http://example.com&quot;</span><span class="p">)</span>
+
+<span class="n">p</span> <span class="o">=</span> <span class="n">Product</span><span class="p">()</span>
+
+<span class="c1"># standard assignment</span>
+<span class="n">p</span><span class="p">[</span><span class="s1">&#39;supplier&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">supplier</span>
+<span class="c1"># this also works as it tries to instantiate a Supplier with the given dict</span>
+<span class="n">p</span><span class="p">[</span><span class="s1">&#39;supplier&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;name&#39;</span><span class="p">:</span> <span class="s1">&#39;Supplier 1&#39;</span> <span class="n">url</span><span class="o">=</span><span class="s1">&#39;http://example.com&#39;</span><span class="p">}</span>
+<span class="c1"># this fails because it can&#39;t instantiate a Supplier</span>
+<span class="n">p</span><span class="p">[</span><span class="s1">&#39;supplier&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;Supplier 1&#39;</span>
+<span class="c1"># this fails because url doesn&#39;t have the valid type</span>
+<span class="n">p</span><span class="p">[</span><span class="s1">&#39;supplier&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;name&#39;</span><span class="p">:</span> <span class="s1">&#39;Supplier 1&#39;</span> <span class="n">url</span><span class="o">=</span><span class="mi">123</span><span class="p">}</span>
+
+<span class="n">v1</span> <span class="o">=</span> <span class="n">Variant</span><span class="p">()</span>
+<span class="n">v1</span><span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;lala&quot;</span>
+<span class="n">v1</span><span class="p">[</span><span class="s1">&#39;price&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">Decimal</span><span class="p">(</span><span class="s2">&quot;100&quot;</span><span class="p">)</span>
+
+<span class="n">v2</span> <span class="o">=</span> <span class="n">Variant</span><span class="p">()</span>
+<span class="n">v2</span><span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;lolo&quot;</span>
+<span class="n">v2</span><span class="p">[</span><span class="s1">&#39;price&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">Decimal</span><span class="p">(</span><span class="s2">&quot;150&quot;</span><span class="p">)</span>
+
+<span class="c1"># standard assignment</span>
+<span class="n">p</span><span class="p">[</span><span class="s1">&#39;variants&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="n">v1</span><span class="p">,</span> <span class="n">v2</span><span class="p">]</span> <span class="c1"># OK</span>
+<span class="c1"># can also instantiate at assignment time</span>
+<span class="n">p</span><span class="p">[</span><span class="s1">&#39;variants&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="n">v1</span><span class="p">,</span> <span class="n">Variant</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;lolo&quot;</span><span class="p">,</span> <span class="n">price</span><span class="o">=</span><span class="n">Decimal</span><span class="p">(</span><span class="s2">&quot;150&quot;</span><span class="p">)]</span>
+<span class="c1"># this also works as it tries to instantiate a Variant with the given dict</span>
+<span class="n">p</span><span class="p">[</span><span class="s1">&#39;variants&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="n">v1</span><span class="p">,</span> <span class="p">{</span><span class="s1">&#39;name&#39;</span><span class="p">:</span> <span class="s1">&#39;lolo&#39;</span><span class="p">,</span> <span class="s1">&#39;price&#39;</span><span class="p">:</span> <span class="n">Decimal</span><span class="p">(</span><span class="s2">&quot;150&quot;</span><span class="p">)]</span>
+<span class="c1"># this fails because it can&#39;t instantiate a Variant</span>
+<span class="n">p</span><span class="p">[</span><span class="s1">&#39;variants&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="n">v1</span><span class="p">,</span> <span class="s1">&#39;test&#39;</span><span class="p">]</span>
+<span class="c1"># this fails because &#39;coco&#39; is not a valid value for price</span>
+<span class="n">p</span><span class="p">[</span><span class="s1">&#39;variants&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="n">v1</span><span class="p">,</span> <span class="p">{</span><span class="s1">&#39;name&#39;</span><span class="p">:</span> <span class="s1">&#39;lolo&#39;</span><span class="p">,</span> <span class="s1">&#39;price&#39;</span><span class="p">:</span> <span class="s1">&#39;coco&#39;</span><span class="p">]</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="default-values">
+<h3>Default values<a class="headerlink" href="#default-values" title="Permalink to this headline">¶</a></h3>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="ch">#!python</span>
+<span class="n">p</span> <span class="o">=</span> <span class="n">Product</span><span class="p">()</span>
+
+<span class="n">p</span><span class="p">[</span><span class="s1">&#39;supplier&#39;</span><span class="p">]</span> <span class="c1"># returns: Supplier(name=&#39;default supplier&#39;)</span>
+<span class="n">p</span><span class="p">[</span><span class="s1">&#39;supplier2&#39;</span><span class="p">]</span> <span class="c1"># raises KeyError</span>
+<span class="n">p</span><span class="p">[</span><span class="s1">&#39;supplier2&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">Supplier</span><span class="p">()</span>
+<span class="n">p</span><span class="p">[</span><span class="s1">&#39;supplier2&#39;</span><span class="p">]</span> <span class="c1"># returns: Supplier(name=&#39;anonymous supplier&#39;)</span>
+
+<span class="n">p</span><span class="p">[</span><span class="s1">&#39;variants&#39;</span><span class="p">]</span> <span class="c1"># raises KeyError</span>
+<span class="n">p</span><span class="p">[</span><span class="s1">&#39;variants2&#39;</span><span class="p">]</span> <span class="c1"># returns []</span>
+
+<span class="n">p</span><span class="p">[</span><span class="s1">&#39;categories&#39;</span><span class="p">]</span> <span class="c1"># raises KeyError</span>
+<span class="n">p</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;categories&#39;</span><span class="p">)</span> <span class="c1"># returns None</span>
+
+<span class="n">p</span><span class="p">[</span><span class="s1">&#39;numbers&#39;</span><span class="p">]</span> <span class="c1"># returns []</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="accessing-and-changing-nested-item-values">
+<h3>Accessing and changing nested item values<a class="headerlink" href="#accessing-and-changing-nested-item-values" title="Permalink to this headline">¶</a></h3>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="ch">#!python</span>
+<span class="n">p</span> <span class="o">=</span> <span class="n">Product</span><span class="p">(</span><span class="n">supplier</span><span class="o">=</span><span class="n">Supplier</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;some name&quot;</span><span class="p">,</span> <span class="n">url</span><span class="o">=</span><span class="s2">&quot;http://example.com&quot;</span><span class="p">))</span>
+<span class="n">p</span><span class="p">[</span><span class="s1">&#39;supplier&#39;</span><span class="p">][</span><span class="s1">&#39;url&#39;</span><span class="p">]</span> <span class="c1"># returns &#39;http://example.com&#39;</span>
+<span class="n">p</span><span class="p">[</span><span class="s1">&#39;supplier&#39;</span><span class="p">][</span><span class="s1">&#39;url&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;http://www.other.com&quot;</span> <span class="c1"># works as expected</span>
+<span class="n">p</span><span class="p">[</span><span class="s1">&#39;supplier&#39;</span><span class="p">][</span><span class="s1">&#39;url&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">123</span> <span class="c1"># fails: wrong type for supplier url</span>
+
+<span class="n">p</span><span class="p">[</span><span class="s1">&#39;variants&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="n">v1</span><span class="p">,</span> <span class="n">v2</span><span class="p">]</span>
+<span class="n">p</span><span class="p">[</span><span class="s1">&#39;variants&#39;</span><span class="p">][</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;name&#39;</span><span class="p">]</span> <span class="c1"># returns v1 name</span>
+<span class="n">p</span><span class="p">[</span><span class="s1">&#39;variants&#39;</span><span class="p">][</span><span class="mi">1</span><span class="p">][</span><span class="s1">&#39;name&#39;</span><span class="p">]</span> <span class="c1"># returns v2 name</span>
+
+<span class="c1"># XXX: decide what to do about these cases:</span>
+<span class="n">p</span><span class="p">[</span><span class="s1">&#39;variants&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">v3</span><span class="p">)</span> <span class="c1"># works but doesn&#39;t check type of v3</span>
+<span class="n">p</span><span class="p">[</span><span class="s1">&#39;variants&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span> <span class="c1"># works but shouldn&#39;t?</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">aaa</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2020, lancer.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.4.0</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="../_sources/sep/sep-003.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

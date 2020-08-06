@@ -1,0 +1,178 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>SEP-010: REST API &#8212; aaa 1 documentation</title>
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script src="../_static/jquery.js"></script>
+    <script src="../_static/underscore.js"></script>
+    <script src="../_static/doctools.js"></script>
+    <script src="../_static/language_data.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <table class="docutils align-default">
+<colgroup>
+<col style="width: 14%" />
+<col style="width: 86%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p>SEP</p></td>
+<td><p>10</p></td>
+</tr>
+<tr class="row-even"><td><p>Title</p></td>
+<td><p>REST API</p></td>
+</tr>
+<tr class="row-odd"><td><p>Author</p></td>
+<td><p>Pablo Hoffman</p></td>
+</tr>
+<tr class="row-even"><td><p>Created</p></td>
+<td><p>2009-11-16</p></td>
+</tr>
+<tr class="row-odd"><td><p>Status</p></td>
+<td><p>Obsolete (JSON-RPC API implemented instead)</p></td>
+</tr>
+</tbody>
+</table>
+<div class="section" id="sep-010-rest-api">
+<h1>SEP-010: REST API<a class="headerlink" href="#sep-010-rest-api" title="Permalink to this headline">¶</a></h1>
+<p>This SEP proposes a JSON REST API for controlling Scrapy in server-mode, which
+is launched with: <code class="docutils literal notranslate"><span class="pre">scrapy-ctl.py</span> <span class="pre">start</span></code></p>
+<div class="section" id="operations">
+<h2>Operations<a class="headerlink" href="#operations" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="get-list-of-available-spiders">
+<h3>Get list of available spiders<a class="headerlink" href="#get-list-of-available-spiders" title="Permalink to this headline">¶</a></h3>
+<p><code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/spiders/all</span></code></p>
+</div>
+<div class="section" id="get-list-of-closed-spiders">
+<h3>Get list of closed spiders<a class="headerlink" href="#get-list-of-closed-spiders" title="Permalink to this headline">¶</a></h3>
+<p><code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/spiders/closed</span></code></p>
+</div>
+<div class="section" id="get-list-of-scheduled-spiders">
+<h3>Get list of scheduled spiders<a class="headerlink" href="#get-list-of-scheduled-spiders" title="Permalink to this headline">¶</a></h3>
+<p><code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/spiders/scheduled</span></code></p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>contains closed</p>
+</div>
+</div>
+<div class="section" id="get-list-of-running-spiders">
+<h3>Get list of running spiders<a class="headerlink" href="#get-list-of-running-spiders" title="Permalink to this headline">¶</a></h3>
+<p><code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/spiders/opened</span></code></p>
+<ul class="simple">
+<li><p>returns list of dicts containing spider <code class="docutils literal notranslate"><span class="pre">id</span></code> and <code class="docutils literal notranslate"><span class="pre">domain_name</span></code></p></li>
+</ul>
+</div>
+<div class="section" id="schedule-spider">
+<h3>Schedule spider<a class="headerlink" href="#schedule-spider" title="Permalink to this headline">¶</a></h3>
+<p><code class="docutils literal notranslate"><span class="pre">POST</span> <span class="pre">/spiders</span></code></p>
+<ul class="simple">
+<li><p>args: <code class="docutils literal notranslate"><span class="pre">schedule=example.com</span></code></p></li>
+</ul>
+</div>
+<div class="section" id="close-spider">
+<h3>Close spider<a class="headerlink" href="#close-spider" title="Permalink to this headline">¶</a></h3>
+<p><code class="docutils literal notranslate"><span class="pre">POST</span> <span class="pre">/spider/1238/close</span></code></p>
+</div>
+<div class="section" id="get-global-stats">
+<h3>Get global stats<a class="headerlink" href="#get-global-stats" title="Permalink to this headline">¶</a></h3>
+<p><code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/stats</span></code></p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>spider-specific not included</p>
+</div>
+</div>
+<div class="section" id="get-spider-specific-stats">
+<h3>Get spider-specific stats<a class="headerlink" href="#get-spider-specific-stats" title="Permalink to this headline">¶</a></h3>
+<p><code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/spider/1238/stats/</span></code></p>
+</div>
+<div class="section" id="get-engine-status">
+<h3>Get engine status<a class="headerlink" href="#get-engine-status" title="Permalink to this headline">¶</a></h3>
+<p><code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/engine/status</span></code></p>
+</div>
+</div>
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">aaa</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2020, lancer.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.4.0</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="../_sources/sep/sep-010.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

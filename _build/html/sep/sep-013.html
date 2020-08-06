@@ -1,0 +1,350 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>SEP-013 - Middlewares refactoring &#8212; aaa 1 documentation</title>
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script src="../_static/jquery.js"></script>
+    <script src="../_static/underscore.js"></script>
+    <script src="../_static/doctools.js"></script>
+    <script src="../_static/language_data.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <table class="docutils align-default">
+<colgroup>
+<col style="width: 16%" />
+<col style="width: 84%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p>SEP</p></td>
+<td><p>13</p></td>
+</tr>
+<tr class="row-even"><td><p>Title</p></td>
+<td><p>Middlewares Refactoring</p></td>
+</tr>
+<tr class="row-odd"><td><p>Author</p></td>
+<td><p>Pablo Hoffman</p></td>
+</tr>
+<tr class="row-even"><td><p>Created</p></td>
+<td><p>2009-11-14</p></td>
+</tr>
+<tr class="row-odd"><td><p>Status</p></td>
+<td><p>Document in progress (being written)</p></td>
+</tr>
+</tbody>
+</table>
+<div class="section" id="sep-013-middlewares-refactoring">
+<h1>SEP-013 - Middlewares refactoring<a class="headerlink" href="#sep-013-middlewares-refactoring" title="Permalink to this headline">¶</a></h1>
+<p>This SEP proposes a refactoring of Scrapy middlewares to remove some
+inconsistencies and limitations.</p>
+<div class="section" id="current-flaws-and-inconsistencies">
+<h2>Current flaws and inconsistencies<a class="headerlink" href="#current-flaws-and-inconsistencies" title="Permalink to this headline">¶</a></h2>
+<p>Even though the core works pretty well, it has some subtle inconsistencies that
+don’t manifest in the common uses, but arise (and are quite annoying) when you
+try to fully exploit all Scrapy features. The currently identified flaws and
+inconsistencies are:</p>
+<ol class="arabic simple">
+<li><p>Request errback may not get called in all cases (more details needed on when
+this happens)</p></li>
+<li><p>Spider middleware has a <code class="docutils literal notranslate"><span class="pre">process_spider_exception</span></code> method which catches
+exceptions coming out of the spider, but it doesn’t have an analogous for
+catching exceptions coming into the spider (for example, from other
+downloader middlewares). This complicates supporting middlewares that extend
+other middlewares.</p></li>
+<li><p>Downloader middleware has a <code class="docutils literal notranslate"><span class="pre">process_exception</span></code> method which catches
+exceptions coming out of the downloader, but it doesn’t have an analogous
+for catching exceptions coming into the downloader (for example, from other
+downloader middlewares). This complicates supporting middlewares that extend
+other middlewares.</p></li>
+<li><p>Scheduler middleware has a <code class="docutils literal notranslate"><span class="pre">enqueue_request</span></code> method but doesn’t have a
+<code class="docutils literal notranslate"><span class="pre">enqueue_request_exception</span></code> nor <code class="docutils literal notranslate"><span class="pre">dequeue_request</span></code> nor
+<code class="docutils literal notranslate"><span class="pre">dequeue_request_exception</span></code> methods.</p></li>
+</ol>
+<p>These flaws will be corrected by the changes proposed in this SEP.</p>
+</div>
+<div class="section" id="overview-of-changes-proposed">
+<h2>Overview of changes proposed<a class="headerlink" href="#overview-of-changes-proposed" title="Permalink to this headline">¶</a></h2>
+<p>Most of the inconsistencies come from the fact that middlewares don’t follow
+the typical
+[<a class="reference external" href="https://twistedmatrix.com/projects/core/documentation/howto/defer.html">https://twistedmatrix.com/projects/core/documentation/howto/defer.html</a>
+deferred] callback/errback chaining logic. Twisted logic is fine and quite
+intuitive, and also fits middlewares very well. Due to some bad design choices
+the integration between middleware calls and deferred is far from optional. So
+the changes to middlewares involve mainly building deferred chains with the
+middleware methods and adding the missing method to each callback/errback
+chain. The proposed API for each middleware is described below.</p>
+<p>See <img alt="scrapy core v2" src="sep\scrapy_core_v2.jpg" /> - a diagram draft for the process architecture.</p>
+</div>
+<div class="section" id="global-changes-to-all-middlewares">
+<h2>Global changes to all middlewares<a class="headerlink" href="#global-changes-to-all-middlewares" title="Permalink to this headline">¶</a></h2>
+<p>To be discussed:</p>
+<ol class="arabic simple">
+<li><p>should we support returning deferreds (i.e. <code class="docutils literal notranslate"><span class="pre">maybeDeferred</span></code>) in middleware
+methods?</p></li>
+<li><p>should we pass Twisted Failures instead of exceptions to error methods?</p></li>
+</ol>
+</div>
+<div class="section" id="spider-middleware-changes">
+<h2>Spider middleware changes<a class="headerlink" href="#spider-middleware-changes" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="current-api">
+<h3>Current API<a class="headerlink" href="#current-api" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">process_spider_input(response,</span> <span class="pre">spider)</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">process_spider_output(response,</span> <span class="pre">result,</span> <span class="pre">spider)</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">process_spider_exception(response,</span> <span class="pre">exception,</span> <span class="pre">spider=spider)</span></code></p></li>
+</ul>
+</div>
+<div class="section" id="changes-proposed">
+<h3>Changes proposed<a class="headerlink" href="#changes-proposed" title="Permalink to this headline">¶</a></h3>
+<ol class="arabic simple">
+<li><p>rename method: <code class="docutils literal notranslate"><span class="pre">process_spider_exception</span></code> to
+<code class="docutils literal notranslate"><span class="pre">process_spider_output_exception</span></code></p></li>
+<li><p>add method” <code class="docutils literal notranslate"><span class="pre">process_spider_input_exception</span></code></p></li>
+</ol>
+</div>
+<div class="section" id="new-api">
+<h3>New API<a class="headerlink" href="#new-api" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">SpiderInput</span></code> deferred</dt><dd><ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">process_spider_input(response,</span> <span class="pre">spider)</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">process_spider_input_exception(response,</span> <span class="pre">exception,</span> <span class="pre">spider=spider)</span></code></p></li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">SpiderOutput</span></code> deferred</dt><dd><ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">process_spider_output(response,</span> <span class="pre">result,</span> <span class="pre">spider)</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">process_spider_output_exception(response,</span> <span class="pre">exception,</span> <span class="pre">spider=spider)</span></code></p></li>
+</ul>
+</dd>
+</dl>
+</li>
+</ul>
+</div>
+</div>
+<div class="section" id="downloader-middleware-changes">
+<h2>Downloader middleware changes<a class="headerlink" href="#downloader-middleware-changes" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id1">
+<h3>Current API<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">process_request(request,</span> <span class="pre">spider)</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">process_response(request,</span> <span class="pre">response,</span> <span class="pre">spider)</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">process_exception(request,</span> <span class="pre">exception,</span> <span class="pre">spider)</span></code></p></li>
+</ul>
+</div>
+<div class="section" id="id2">
+<h3>Changes proposed<a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h3>
+<blockquote>
+<div><ol class="arabic simple">
+<li><p>rename method: <code class="docutils literal notranslate"><span class="pre">process_exception</span></code> to <code class="docutils literal notranslate"><span class="pre">process_response_exception</span></code></p></li>
+<li><p>add method: <code class="docutils literal notranslate"><span class="pre">process_request_exception</span></code></p></li>
+</ol>
+</div></blockquote>
+</div>
+<div class="section" id="id3">
+<h3>New API<a class="headerlink" href="#id3" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">ProcessRequest</span></code> deferred
+- <code class="docutils literal notranslate"><span class="pre">process_request(request,</span> <span class="pre">spider)</span></code>
+- <code class="docutils literal notranslate"><span class="pre">process_request_exception(request,</span> <span class="pre">exception,</span> <span class="pre">response)</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">ProcessResponse</span></code> deferred
+- <code class="docutils literal notranslate"><span class="pre">process_response(request,</span> <span class="pre">spider,</span> <span class="pre">response)</span></code>
+- <code class="docutils literal notranslate"><span class="pre">process_response_exception(request,</span> <span class="pre">exception,</span> <span class="pre">response)</span></code></p></li>
+</ul>
+</div>
+</div>
+<div class="section" id="scheduler-middleware-changes">
+<h2>Scheduler middleware changes<a class="headerlink" href="#scheduler-middleware-changes" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id4">
+<h3>Current API<a class="headerlink" href="#id4" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">enqueue_request(spider,</span> <span class="pre">request)</span></code>
+- ‘’’TBD:’’’ what does it mean to return a Response object here? (the current implementation allows it)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">open_spider(spider)</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">close_spider(spider)</span></code></p></li>
+</ul>
+</div>
+<div class="section" id="id5">
+<h3>Changes proposed<a class="headerlink" href="#id5" title="Permalink to this headline">¶</a></h3>
+<ol class="arabic simple">
+<li><p>exchange order of method arguments ‘’’(spider, request)’’’ to ‘’’(request,
+spider)’’’ for consistency with the other middlewares</p></li>
+<li><p>add methods: <code class="docutils literal notranslate"><span class="pre">dequeue_request</span></code>, <code class="docutils literal notranslate"><span class="pre">enqueue_request_exception</span></code>,
+<code class="docutils literal notranslate"><span class="pre">dequeue_request_exception</span></code></p></li>
+<li><p>remove methods: <code class="docutils literal notranslate"><span class="pre">open_spider</span></code>, <code class="docutils literal notranslate"><span class="pre">close_spider</span></code>. They should be
+replaced by using the <code class="docutils literal notranslate"><span class="pre">spider_opened</span></code>, <code class="docutils literal notranslate"><span class="pre">spider_closed</span></code> signals, but
+they weren’t before because of a chicken-egg problem when open spiders
+(because of scheduler auto-open feature).</p></li>
+</ol>
+<ul class="simple">
+<li><p>‘’’TBD:’’’ how to get rid of chicken-egg problem, perhaps refactoring scheduler auto-open?</p></li>
+</ul>
+</div>
+<div class="section" id="id6">
+<h3>New API<a class="headerlink" href="#id6" title="Permalink to this headline">¶</a></h3>
+<ul>
+<li><dl>
+<dt><code class="docutils literal notranslate"><span class="pre">EnqueueRequest</span></code> deferred</dt><dd><ul>
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">enqueue_request(request,</span> <span class="pre">spider)</span></code></dt><dd><ul class="simple">
+<li><dl class="simple">
+<dt>Can return:</dt><dd><ul>
+<li><p>return Request: which is passed to next mw component</p></li>
+<li><p>raise <code class="docutils literal notranslate"><span class="pre">IgnoreRequest</span></code></p></li>
+<li><p>raise any other exception (errback chain called)</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><p><code class="docutils literal notranslate"><span class="pre">enqueue_request_exception(request,</span> <span class="pre">exception,</span> <span class="pre">spider)</span></code></p></li>
+<li><dl>
+<dt>Output and errors:</dt><dd><ul>
+<li><p>The Request that gets returned by last enqueue_request() is the one
+that gets scheduled</p></li>
+<li><p>If no request is returned but a Failure, the Request errback is called
+with that failure</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>‘’’TBD’’’: do we want to call request errback if it fails
+scheduling?0</p></li>
+</ul>
+</div></blockquote>
+</li>
+</ul>
+</dd>
+</dl>
+</li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">DequeueRequest</span></code> deferred</dt><dd><ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">dequeue_request(request,</span> <span class="pre">spider)</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">dequeue_request_exception(exception,</span> <span class="pre">spider)</span></code></p></li>
+</ul>
+</dd>
+</dl>
+</li>
+</ul>
+</div>
+</div>
+<div class="section" id="open-issues-to-resolve">
+<h2>Open issues (to resolve)<a class="headerlink" href="#open-issues-to-resolve" title="Permalink to this headline">¶</a></h2>
+<ol class="arabic simple">
+<li><p>how to avoid massive <code class="docutils literal notranslate"><span class="pre">IgnoreRequest</span></code> exceptions from propagating which
+slows down the crawler</p></li>
+<li><p>if requests change, how do we keep reference to the original one? do we need
+to?
+- opt 1: don’t allow changing the original Request object - discarded
+- opt 2: keep reference to the original request (how it’s done now)
+- opt 3: split SpiderRequest from DownloaderRequest</p>
+<ul class="simple">
+<li><p>opt 5: keep reference only to original deferred and forget about the
+original request</p></li>
+</ul>
+</li>
+<li><p>scheduler auto-open chicken-egg problem</p>
+<ul class="simple">
+<li><p>opt 1: drop auto-open y forbid opening spiders if concurrent is full. use
+SpiderScheduler instead. why is scheduler auto-open really needed?</p></li>
+</ul>
+</li>
+<li><p>call <code class="docutils literal notranslate"><span class="pre">Request.errback</span></code> if both schmw and dlmw fail?
+- opt 1: ignore and just propagate the error as-is
+- opt 2: call another method? like Request.schmw_errback / dlmw_errback?
+- opt 3: use an exception wrapper? SchedulerError() DownloaderError()?</p></li>
+</ol>
+</div>
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">aaa</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2020, lancer.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.4.0</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="../_sources/sep/sep-013.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

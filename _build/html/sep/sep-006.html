@@ -1,0 +1,182 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>SEP-006: Rename of Selectors to Extractors &#8212; aaa 1 documentation</title>
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script src="../_static/jquery.js"></script>
+    <script src="../_static/underscore.js"></script>
+    <script src="../_static/doctools.js"></script>
+    <script src="../_static/language_data.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <table class="docutils align-default">
+<colgroup>
+<col style="width: 15%" />
+<col style="width: 85%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p>SEP</p></td>
+<td><p>06</p></td>
+</tr>
+<tr class="row-even"><td><p>Title</p></td>
+<td><p>Extractors</p></td>
+</tr>
+<tr class="row-odd"><td><p>Author</p></td>
+<td><p>Ismael Carnales and a bunch of rabid mice</p></td>
+</tr>
+<tr class="row-even"><td><p>Created</p></td>
+<td><p>2009-07-28</p></td>
+</tr>
+<tr class="row-odd"><td><p>Status</p></td>
+<td><p>Obsolete (discarded)</p></td>
+</tr>
+</tbody>
+</table>
+<div class="section" id="sep-006-rename-of-selectors-to-extractors">
+<h1>SEP-006: Rename of Selectors to Extractors<a class="headerlink" href="#sep-006-rename-of-selectors-to-extractors" title="Permalink to this headline">¶</a></h1>
+<p>This SEP proposes a more meaningful naming of XPathSelectors or “Selectors” and
+their <code class="docutils literal notranslate"><span class="pre">x</span></code> method.</p>
+<div class="section" id="motivation">
+<h2>Motivation<a class="headerlink" href="#motivation" title="Permalink to this headline">¶</a></h2>
+<p>When you use Selectors in Scrapy, your final goal is to “extract” the data that
+you’ve selected, as the [<a class="reference external" href="https://docs.scrapy.org/en/latest/topics/selectors.html">https://docs.scrapy.org/en/latest/topics/selectors.html</a>
+XPath Selectors documentation] says (bolding by me):</p>
+<blockquote>
+<div><p>When you’re scraping web pages, the most common task you need to perform is
+to <strong>extract</strong> data from the HTML source.</p>
+</div></blockquote>
+<blockquote>
+<div><p>Scrapy comes with its own mechanism for <strong>extracting</strong> data. They’re called
+<code class="docutils literal notranslate"><span class="pre">XPath</span></code> selectors (or just “selectors”, for short) because they “select”
+certain parts of the HTML document specified by <code class="docutils literal notranslate"><span class="pre">XPath</span></code> expressions.</p>
+</div></blockquote>
+<blockquote>
+<div><p>To actually <strong>extract</strong> the textual data you must call the selector
+<code class="docutils literal notranslate"><span class="pre">extract()</span></code> method, as follows</p>
+</div></blockquote>
+<blockquote>
+<div><p>Selectors also have a <code class="docutils literal notranslate"><span class="pre">re()</span></code> method for <strong>extracting</strong> data using regular
+expressions.</p>
+</div></blockquote>
+<blockquote>
+<div><p>For example, suppose you want to <strong>extract</strong> all &lt;p&gt; elements inside &lt;div&gt;
+elements. First you get would get all &lt;div&gt; elements</p>
+</div></blockquote>
+</div>
+<div class="section" id="rationale">
+<h2>Rationale<a class="headerlink" href="#rationale" title="Permalink to this headline">¶</a></h2>
+<p>As and there is no <code class="docutils literal notranslate"><span class="pre">Extractor</span></code> object in Scrapy and what you want to finally
+perform with <code class="docutils literal notranslate"><span class="pre">Selectors</span></code> is extracting data, we propose the renaming of
+<code class="docutils literal notranslate"><span class="pre">Selectors</span></code> to <code class="docutils literal notranslate"><span class="pre">Extractors</span></code>. (In Scrapy for extracting you use selectors is
+really weird :) )</p>
+</div>
+<div class="section" id="additional-changes">
+<h2>Additional changes<a class="headerlink" href="#additional-changes" title="Permalink to this headline">¶</a></h2>
+<p>As the name of the method for performing selection (the <code class="docutils literal notranslate"><span class="pre">x</span></code> method) is not
+descriptive nor mnemotechnic enough and clearly clashes with <code class="docutils literal notranslate"><span class="pre">extract</span></code> method
+(x sounds like a short for extract in english), we propose to rename it to
+<code class="docutils literal notranslate"><span class="pre">select</span></code>, <code class="docutils literal notranslate"><span class="pre">sel</span></code> (is shortness if required), or <code class="docutils literal notranslate"><span class="pre">xpath</span></code> after <a class="reference external" href="http://lxml.de/xpathxslt.html">lxml’s</a> <code class="docutils literal notranslate"><span class="pre">xpath</span></code> method.</p>
+</div>
+<div class="section" id="bonus-itembuilder">
+<h2>Bonus (ItemBuilder)<a class="headerlink" href="#bonus-itembuilder" title="Permalink to this headline">¶</a></h2>
+<p>After this renaming we propose also renaming <code class="docutils literal notranslate"><span class="pre">ItemBuilder</span></code> to <code class="docutils literal notranslate"><span class="pre">ItemExtractor</span></code>,
+because the <code class="docutils literal notranslate"><span class="pre">ItemBuilder</span></code>/<code class="docutils literal notranslate"><span class="pre">Extractor</span></code> will act as a bridge between a set of
+<code class="docutils literal notranslate"><span class="pre">Extractors</span></code> and an <code class="docutils literal notranslate"><span class="pre">Item</span></code> and because it will literally “extract” an item from a
+webpage or set of pages.</p>
+</div>
+<div class="section" id="references">
+<h2>References<a class="headerlink" href="#references" title="Permalink to this headline">¶</a></h2>
+<blockquote>
+<div><ol class="arabic simple">
+<li><p>XPath Selectors (<a class="reference external" href="https://docs.scrapy.org/topics/selectors.html">https://docs.scrapy.org/topics/selectors.html</a>)</p></li>
+<li><p>XPath and XSLT with lxml (<a class="reference external" href="http://lxml.de/xpathxslt.html">http://lxml.de/xpathxslt.html</a>)</p></li>
+</ol>
+</div></blockquote>
+</div>
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">aaa</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2020, lancer.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.4.0</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="../_sources/sep/sep-006.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

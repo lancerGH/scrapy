@@ -1,0 +1,739 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>SEP-014 - CrawlSpider v2 &#8212; aaa 1 documentation</title>
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script src="../_static/jquery.js"></script>
+    <script src="../_static/underscore.js"></script>
+    <script src="../_static/doctools.js"></script>
+    <script src="../_static/language_data.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <table class="docutils align-default">
+<colgroup>
+<col style="width: 9%" />
+<col style="width: 91%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p>SEP</p></td>
+<td><p>14</p></td>
+</tr>
+<tr class="row-even"><td><p>Title</p></td>
+<td><p>CrawlSpider v2</p></td>
+</tr>
+<tr class="row-odd"><td><p>Author</p></td>
+<td><p>Insophia Team</p></td>
+</tr>
+<tr class="row-even"><td><p>Created</p></td>
+<td><p>2010-01-22</p></td>
+</tr>
+<tr class="row-odd"><td><p>Updated</p></td>
+<td><p>2010-02-04</p></td>
+</tr>
+<tr class="row-even"><td><p>Status</p></td>
+<td><p>Final. Partially implemented but discarded because of lack of use in
+r2632</p></td>
+</tr>
+</tbody>
+</table>
+<div class="section" id="sep-014-crawlspider-v2">
+<h1>SEP-014 - CrawlSpider v2<a class="headerlink" href="#sep-014-crawlspider-v2" title="Permalink to this headline">¶</a></h1>
+<p>This SEP proposes a rewrite of Scrapy <code class="docutils literal notranslate"><span class="pre">CrawlSpider</span></code> and related components</p>
+<div class="section" id="current-flaws-and-inconsistencies">
+<h2>Current flaws and inconsistencies<a class="headerlink" href="#current-flaws-and-inconsistencies" title="Permalink to this headline">¶</a></h2>
+<ol class="arabic simple">
+<li><p>Request’s callbacks are hard to persist.</p></li>
+<li><p>Link extractors are inflexible and hard to maintain, link
+processing/filtering is tightly coupled. (e.g. canonicalize)</p></li>
+<li><p>Isn’t possible to crawl an url directly from command line because the Spider
+does not know which callback use.</p></li>
+</ol>
+<p>These flaws will be corrected by the changes proposed in this SEP.</p>
+</div>
+<div class="section" id="proposed-api-changes">
+<h2>Proposed API Changes<a class="headerlink" href="#proposed-api-changes" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li><p>Separate the functionality of Rule-LinkExtractor-Callback</p></li>
+<li><p>Separate the functionality of LinkExtractor to Request Extractor and Request
+Processor</p></li>
+<li><p>Separate the process of determining response callback and the extraction of
+new requests (link extractors)</p></li>
+<li><p>The callback will be determine by Matcher Objects on request/response objects</p></li>
+</ul>
+<div class="section" id="matcher-objects">
+<h3>Matcher Objects<a class="headerlink" href="#matcher-objects" title="Permalink to this headline">¶</a></h3>
+<p>Matcher Objects (aka Matcher) are responsible for determining if given request
+or response matches an arbitrary criteria.  The Matcher receives as argument
+the request or the response, giving a powerful access to all request/response
+attributes.</p>
+<p>In the current <code class="docutils literal notranslate"><span class="pre">CrawlSpider</span></code>, the Rule Object has the responsibility to
+determine the callback of given extractor, and the link extractor contains the
+url pattern (aka regex). Now the Matcher will contain only the pattern or
+criteria to determine which request/response will execute any action. See below
+Spider Rules.</p>
+</div>
+<div class="section" id="request-extractors">
+<h3>Request Extractors<a class="headerlink" href="#request-extractors" title="Permalink to this headline">¶</a></h3>
+<p>Request Extractors takes response object and determines which requests follow.</p>
+<p>This is an enhancement to <code class="docutils literal notranslate"><span class="pre">LinkExtractors</span></code> which returns urls (links),
+Request Extractors return Request objects.</p>
+</div>
+<div class="section" id="request-processors">
+<h3>Request Processors<a class="headerlink" href="#request-processors" title="Permalink to this headline">¶</a></h3>
+<p>Request Processors takes requests objects and can perform any action to them,
+like filtering or modifying on the fly.</p>
+<p>The current <code class="docutils literal notranslate"><span class="pre">LinkExtractor</span></code> had integrated link processing, like
+canonicalize. Request Processors can be reutilized and applied in serie.</p>
+</div>
+<div class="section" id="request-generator">
+<h3>Request Generator<a class="headerlink" href="#request-generator" title="Permalink to this headline">¶</a></h3>
+<p>Request Generator is the decoupling of the <code class="docutils literal notranslate"><span class="pre">CrawlSpider</span></code>’s method
+_request_to_follow().  Request Generator takes the response object and applies
+the Request Extractors and Request Processors.</p>
+</div>
+<div class="section" id="rules-manager">
+<h3>Rules Manager<a class="headerlink" href="#rules-manager" title="Permalink to this headline">¶</a></h3>
+<p>The Rules are a definition of Rule objects containing Matcher Objects and
+callback.</p>
+<p>The Legacy Rules were used to perform the link extraction and attach the
+callback to the generated Request object.  The proposed new Rules will be used
+to determine the callback for given response. This opens a whole of
+opportunities, like determine the callback for given url, and persist the queue
+of Request objects because the callback is determined the matching the Response
+object against the Rules.</p>
+</div>
+</div>
+<div class="section" id="usage-examples">
+<h2>Usage Examples<a class="headerlink" href="#usage-examples" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="basic-crawling">
+<h3>Basic Crawling<a class="headerlink" href="#basic-crawling" title="Permalink to this headline">¶</a></h3>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="ch">#!python</span>
+<span class="c1">#</span>
+<span class="c1"># Basic Crawling</span>
+<span class="c1">#</span>
+<span class="k">class</span> <span class="nc">SampleSpider</span><span class="p">(</span><span class="n">CrawlSpider</span><span class="p">):</span>
+    <span class="n">rules</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="c1"># The dispatcher uses first-match policy</span>
+        <span class="n">Rule</span><span class="p">(</span><span class="n">UrlRegexMatch</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;product\.html\?id=\d+&#39;</span><span class="p">),</span> <span class="s1">&#39;parse_item&#39;</span><span class="p">,</span> <span class="n">follow</span><span class="o">=</span><span class="kc">False</span><span class="p">),</span>
+        <span class="c1"># by default, if the first param is string is wrapped into UrlRegexMatch</span>
+        <span class="n">Rule</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;.+&#39;</span><span class="p">,</span> <span class="s1">&#39;parse_page&#39;</span><span class="p">),</span>
+        <span class="p">]</span>
+
+    <span class="n">request_extractors</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="c1"># crawl all links looking for products and images</span>
+        <span class="n">SgmlRequestExtractor</span><span class="p">(),</span>
+        <span class="p">]</span>
+
+    <span class="n">request_processors</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="c1"># canonicalize all requests&#39; urls</span>
+        <span class="n">Canonicalize</span><span class="p">(),</span>
+        <span class="p">]</span>
+
+    <span class="k">def</span> <span class="nf">parse_item</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">response</span><span class="p">):</span>
+        <span class="c1"># parse and extract items from response</span>
+        <span class="k">pass</span>
+
+    <span class="k">def</span> <span class="nf">parse_page</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">response</span><span class="p">):</span>
+        <span class="c1"># extract images on all pages</span>
+        <span class="k">pass</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="custom-processor-and-external-callback">
+<h3>Custom Processor and External Callback<a class="headerlink" href="#custom-processor-and-external-callback" title="Permalink to this headline">¶</a></h3>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="ch">#!python</span>
+<span class="c1">#</span>
+<span class="c1"># Using external callbacks</span>
+<span class="c1">#</span>
+
+<span class="c1"># Custom Processor</span>
+<span class="k">def</span> <span class="nf">filter_today_links</span><span class="p">(</span><span class="n">requests</span><span class="p">):</span>
+    <span class="c1"># only crawl today links</span>
+    <span class="n">today</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">datetime</span><span class="o">.</span><span class="n">today</span><span class="p">()</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s1">&#39;%Y-%m-</span><span class="si">%d</span><span class="s1">&#39;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="p">[</span><span class="n">r</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">requests</span> <span class="k">if</span> <span class="n">today</span> <span class="ow">in</span> <span class="n">r</span><span class="o">.</span><span class="n">url</span><span class="p">]</span>
+
+<span class="c1"># Callback defined out of spider</span>
+<span class="k">def</span> <span class="nf">my_external_callback</span><span class="p">(</span><span class="n">response</span><span class="p">):</span>
+    <span class="c1"># process item</span>
+    <span class="k">pass</span>
+
+<span class="k">class</span> <span class="nc">SampleSpider</span><span class="p">(</span><span class="n">CrawlSpider</span><span class="p">):</span>
+    <span class="n">rules</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="c1"># The dispatcher uses first-match policy</span>
+        <span class="n">Rule</span><span class="p">(</span><span class="n">UrlRegexMatch</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;/news/(.+)/&#39;</span><span class="p">),</span> <span class="n">my_external_callback</span><span class="p">),</span>
+        <span class="p">]</span>
+
+    <span class="n">request_extractors</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="n">RegexRequestExtractor</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;/sections/.+&#39;</span><span class="p">),</span>
+        <span class="n">RegexRequestExtractor</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;/news/.+&#39;</span><span class="p">),</span>
+        <span class="p">]</span>
+
+    <span class="n">request_processors</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="c1"># canonicalize all requests&#39; urls</span>
+        <span class="n">Canonicalize</span><span class="p">(),</span>
+        <span class="n">filter_today_links</span><span class="p">,</span>
+        <span class="p">]</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="section" id="implementation">
+<h2>Implementation<a class="headerlink" href="#implementation" title="Permalink to this headline">¶</a></h2>
+<p><em>Work-in-progress</em></p>
+<div class="section" id="package-structure">
+<h3>Package Structure<a class="headerlink" href="#package-structure" title="Permalink to this headline">¶</a></h3>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">contrib_exp</span>
+    <span class="o">|-</span> <span class="n">crawlspider</span><span class="o">/</span>
+        <span class="o">|-</span> <span class="n">spider</span><span class="o">.</span><span class="n">py</span>
+            <span class="o">|-</span> <span class="n">CrawlSpider</span>
+        <span class="o">|-</span> <span class="n">rules</span><span class="o">.</span><span class="n">py</span>
+            <span class="o">|-</span> <span class="n">Rule</span>
+            <span class="o">|-</span> <span class="n">CompiledRule</span>
+            <span class="o">|-</span> <span class="n">RulesManager</span>
+        <span class="o">|-</span> <span class="n">reqgen</span><span class="o">.</span><span class="n">py</span>
+            <span class="o">|-</span> <span class="n">RequestGenerator</span>
+        <span class="o">|-</span> <span class="n">reqproc</span><span class="o">.</span><span class="n">py</span>
+            <span class="o">|-</span> <span class="n">Canonicalize</span>
+            <span class="o">|-</span> <span class="n">Unique</span>
+            <span class="o">|-</span> <span class="o">...</span>
+        <span class="o">|-</span> <span class="n">reqext</span><span class="o">.</span><span class="n">py</span>
+            <span class="o">|-</span> <span class="n">SgmlRequestExtractor</span>
+            <span class="o">|-</span> <span class="n">RegexRequestExtractor</span>
+            <span class="o">|-</span> <span class="o">...</span>
+        <span class="o">|-</span> <span class="n">matchers</span><span class="o">.</span><span class="n">py</span>
+            <span class="o">|-</span> <span class="n">BaseMatcher</span>
+            <span class="o">|-</span> <span class="n">UrlMatcher</span>
+            <span class="o">|-</span> <span class="n">UrlRegexMatcher</span>
+            <span class="o">|-</span> <span class="o">...</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="request-response-matchers">
+<h3>Request/Response Matchers<a class="headerlink" href="#request-response-matchers" title="Permalink to this headline">¶</a></h3>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="ch">#!python</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Request/Response Matchers</span>
+
+<span class="sd">Perform evaluation to Request or Response attributes</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="k">class</span> <span class="nc">BaseMatcher</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Base matcher. Returns True by default.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">matches_request</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">request</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Performs Request Matching&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="kc">True</span>
+
+    <span class="k">def</span> <span class="nf">matches_response</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">response</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Performs Response Matching&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="kc">True</span>
+
+
+<span class="k">class</span> <span class="nc">UrlMatcher</span><span class="p">(</span><span class="n">BaseMatcher</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Matches URL attribute&quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">url</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Initialize url attribute&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_url</span> <span class="o">=</span> <span class="n">url</span>
+
+    <span class="k">def</span> <span class="nf">matches_url</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">url</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Returns True if given url is equal to matcher&#39;s url&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_url</span> <span class="n">url</span>
+
+    <span class="k">def</span> <span class="nf">matches_request</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">request</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Returns True if Request&#39;s url matches initial url&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">matches_url</span><span class="p">(</span><span class="n">request</span><span class="o">.</span><span class="n">url</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">matches_response</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">response</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;REturns True if Response&#39;s url matches initial url&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">matches_url</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">url</span><span class="p">)</span>
+
+
+<span class="k">class</span> <span class="nc">UrlRegexMatcher</span><span class="p">(</span><span class="n">UrlMatcher</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Matches URL using regular expression&quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">regex</span><span class="p">,</span> <span class="n">flags</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Initialize regular expression&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_regex</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="n">regex</span><span class="p">,</span> <span class="n">flags</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">matches_url</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">url</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Returns True if url matches regular expression&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_regex</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="n">url</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="request-extractor">
+<h3>Request Extractor<a class="headerlink" href="#request-extractor" title="Permalink to this headline">¶</a></h3>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="ch">#!python</span>
+<span class="c1">#</span>
+<span class="c1"># Requests Extractor</span>
+<span class="c1"># Extractors receive response and return list of Requests</span>
+<span class="c1">#</span>
+
+<span class="k">class</span> <span class="nc">BaseSgmlRequestExtractor</span><span class="p">(</span><span class="n">FixedSGMLParser</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Base SGML Request Extractor&quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tag</span><span class="o">=</span><span class="s1">&#39;a&#39;</span><span class="p">,</span> <span class="n">attr</span><span class="o">=</span><span class="s1">&#39;href&#39;</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Initialize attributes&quot;&quot;&quot;</span>
+        <span class="n">FixedSGMLParser</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">scan_tag</span> <span class="o">=</span> <span class="n">tag</span> <span class="k">if</span> <span class="n">callable</span><span class="p">(</span><span class="n">tag</span><span class="p">)</span> <span class="k">else</span> <span class="k">lambda</span> <span class="n">t</span><span class="p">:</span> <span class="n">t</span> <span class="n">tag</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">scan_attr</span> <span class="o">=</span> <span class="n">attr</span> <span class="k">if</span> <span class="n">callable</span><span class="p">(</span><span class="n">attr</span><span class="p">)</span> <span class="k">else</span> <span class="k">lambda</span> <span class="n">a</span><span class="p">:</span> <span class="n">a</span> <span class="n">attr</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">current_request</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="k">def</span> <span class="nf">extract_requests</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">response</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Returns list of requests extracted from response&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_extract_requests</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">body</span><span class="p">,</span> <span class="n">response</span><span class="o">.</span><span class="n">url</span><span class="p">,</span>
+                                  <span class="n">response</span><span class="o">.</span><span class="n">encoding</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_extract_requests</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">response_text</span><span class="p">,</span> <span class="n">response_url</span><span class="p">,</span> <span class="n">response_encoding</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Extract requests with absolute urls&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">feed</span><span class="p">(</span><span class="n">response_text</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+        <span class="n">base_url</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">base_url</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">base_url</span> <span class="k">else</span> <span class="n">response_url</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_make_absolute_urls</span><span class="p">(</span><span class="n">base_url</span><span class="p">,</span> <span class="n">response_encoding</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_fix_link_text_encoding</span><span class="p">(</span><span class="n">response_encoding</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">requests</span>
+
+    <span class="k">def</span> <span class="nf">_make_absolute_urls</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">base_url</span><span class="p">,</span> <span class="n">encoding</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Makes all request&#39;s urls absolute&quot;&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">req</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">requests</span><span class="p">:</span>
+            <span class="n">url</span> <span class="o">=</span> <span class="n">req</span><span class="o">.</span><span class="n">url</span>
+            <span class="c1"># make absolute url</span>
+            <span class="n">url</span> <span class="o">=</span> <span class="n">urljoin_rfc</span><span class="p">(</span><span class="n">base_url</span><span class="p">,</span> <span class="n">url</span><span class="p">,</span> <span class="n">encoding</span><span class="p">)</span>
+            <span class="n">url</span> <span class="o">=</span> <span class="n">safe_url_string</span><span class="p">(</span><span class="n">url</span><span class="p">,</span> <span class="n">encoding</span><span class="p">)</span>
+            <span class="c1"># replace in-place request&#39;s url</span>
+            <span class="n">req</span><span class="o">.</span><span class="n">url</span> <span class="o">=</span> <span class="n">url</span>
+
+    <span class="k">def</span> <span class="nf">_fix_link_text_encoding</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">encoding</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Convert link_text to unicode for each request&quot;&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">req</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">requests</span><span class="p">:</span>
+            <span class="n">req</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s1">&#39;link_text&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">)</span>
+            <span class="n">req</span><span class="o">.</span><span class="n">meta</span><span class="p">[</span><span class="s1">&#39;link_text&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">str_to_unicode</span><span class="p">(</span><span class="n">req</span><span class="o">.</span><span class="n">meta</span><span class="p">[</span><span class="s1">&#39;link_text&#39;</span><span class="p">],</span>
+                                                   <span class="n">encoding</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">reset</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Reset state&quot;&quot;&quot;</span>
+        <span class="n">FixedSGMLParser</span><span class="o">.</span><span class="n">reset</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">requests</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">base_url</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="k">def</span> <span class="nf">unknown_starttag</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tag</span><span class="p">,</span> <span class="n">attrs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Process unknown start tag&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="s1">&#39;base&#39;</span> <span class="n">tag</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">base_url</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">attrs</span><span class="p">)</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;href&#39;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">scan_tag</span><span class="p">(</span><span class="n">tag</span><span class="p">):</span>
+            <span class="k">for</span> <span class="n">attr</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">attrs</span><span class="p">:</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">scan_attr</span><span class="p">(</span><span class="n">attr</span><span class="p">):</span>
+                    <span class="k">if</span> <span class="n">value</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                        <span class="n">req</span> <span class="o">=</span> <span class="n">Request</span><span class="p">(</span><span class="n">url</span><span class="o">=</span><span class="n">value</span><span class="p">)</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">requests</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">req</span><span class="p">)</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">current_request</span> <span class="o">=</span> <span class="n">req</span>
+
+    <span class="k">def</span> <span class="nf">unknown_endtag</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tag</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Process unknown end tag&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">current_request</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="k">def</span> <span class="nf">handle_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Process data&quot;&quot;&quot;</span>
+        <span class="n">current</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_request</span>
+        <span class="k">if</span> <span class="n">current</span> <span class="ow">and</span> <span class="ow">not</span> <span class="s1">&#39;link_text&#39;</span> <span class="ow">in</span> <span class="n">current</span><span class="o">.</span><span class="n">meta</span><span class="p">:</span>
+            <span class="n">current</span><span class="o">.</span><span class="n">meta</span><span class="p">[</span><span class="s1">&#39;link_text&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+
+
+<span class="k">class</span> <span class="nc">SgmlRequestExtractor</span><span class="p">(</span><span class="n">BaseSgmlRequestExtractor</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;SGML Request Extractor&quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tags</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">attrs</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Initialize with custom tag &amp; attribute function checkers&quot;&quot;&quot;</span>
+        <span class="c1"># defaults</span>
+        <span class="n">tags</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">tags</span><span class="p">)</span> <span class="k">if</span> <span class="n">tags</span> <span class="k">else</span> <span class="p">(</span><span class="s1">&#39;a&#39;</span><span class="p">,</span> <span class="s1">&#39;area&#39;</span><span class="p">)</span>
+        <span class="n">attrs</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">attrs</span><span class="p">)</span> <span class="k">if</span> <span class="n">attrs</span> <span class="k">else</span> <span class="p">(</span><span class="s1">&#39;href&#39;</span><span class="p">,</span> <span class="p">)</span>
+
+        <span class="n">tag_func</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">tags</span>
+        <span class="n">attr_func</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">attrs</span>
+        <span class="n">BaseSgmlRequestExtractor</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tag</span><span class="o">=</span><span class="n">tag_func</span><span class="p">,</span> <span class="n">attr</span><span class="o">=</span><span class="n">attr_func</span><span class="p">)</span>
+
+
+<span class="k">class</span> <span class="nc">XPathRequestExtractor</span><span class="p">(</span><span class="n">SgmlRequestExtractor</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;SGML Request Extractor with XPath restriction&quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">restrict_xpaths</span><span class="p">,</span> <span class="n">tags</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">attrs</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Initialize XPath restrictions&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">restrict_xpaths</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">arg_to_iter</span><span class="p">(</span><span class="n">restrict_xpaths</span><span class="p">))</span>
+        <span class="n">SgmlRequestExtractor</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tags</span><span class="p">,</span> <span class="n">attrs</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">extract_requests</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">response</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Restrict to XPath regions&quot;&quot;&quot;</span>
+        <span class="n">hxs</span> <span class="o">=</span> <span class="n">HtmlXPathSelector</span><span class="p">(</span><span class="n">response</span><span class="p">)</span>
+        <span class="n">fragments</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
+                            <span class="n">html_frag</span> <span class="k">for</span> <span class="n">html_frag</span> <span class="ow">in</span> <span class="n">hxs</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">xpath</span><span class="p">)</span><span class="o">.</span><span class="n">extract</span><span class="p">()</span>
+                        <span class="p">)</span> <span class="k">for</span> <span class="n">xpath</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">restrict_xpaths</span><span class="p">)</span>
+        <span class="n">html_slice</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">html_frag</span> <span class="k">for</span> <span class="n">html_frag</span> <span class="ow">in</span> <span class="n">fragments</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_extract_requests</span><span class="p">(</span><span class="n">html_slice</span><span class="p">,</span> <span class="n">response</span><span class="o">.</span><span class="n">url</span><span class="p">,</span>
+                                        <span class="n">response</span><span class="o">.</span><span class="n">encoding</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="request-processor">
+<h3>Request Processor<a class="headerlink" href="#request-processor" title="Permalink to this headline">¶</a></h3>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="ch">#!python</span>
+<span class="c1">#</span>
+<span class="c1"># Request Processors</span>
+<span class="c1"># Processors receive list of requests and return list of requests</span>
+<span class="c1">#</span>
+<span class="sd">&quot;&quot;&quot;Request Processors&quot;&quot;&quot;</span>
+
+<span class="k">class</span> <span class="nc">Canonicalize</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Canonicalize Request Processor&quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">requests</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Canonicalize all requests&#39; urls&quot;&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">req</span> <span class="ow">in</span> <span class="n">requests</span><span class="p">:</span>
+            <span class="c1"># replace in-place</span>
+            <span class="n">req</span><span class="o">.</span><span class="n">url</span> <span class="o">=</span> <span class="n">canonicalize_url</span><span class="p">(</span><span class="n">req</span><span class="o">.</span><span class="n">url</span><span class="p">)</span>
+            <span class="k">yield</span> <span class="n">req</span>
+
+
+<span class="k">class</span> <span class="nc">Unique</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Filter duplicate Requests&quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">attributes</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Initialize comparison attributes&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_attributes</span> <span class="o">=</span> <span class="n">attributes</span> <span class="ow">or</span> <span class="p">[</span><span class="s1">&#39;url&#39;</span><span class="p">]</span>
+
+    <span class="k">def</span> <span class="nf">_requests_equal</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">req1</span><span class="p">,</span> <span class="n">req2</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Attribute comparison helper&quot;&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">attr</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_attributes</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">req1</span><span class="p">,</span> <span class="n">attr</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">req2</span><span class="p">,</span> <span class="n">attr</span><span class="p">):</span>
+                <span class="k">return</span> <span class="kc">False</span>
+        <span class="c1"># all attributes equal</span>
+        <span class="k">return</span> <span class="kc">True</span>
+
+    <span class="k">def</span> <span class="nf">_request_in</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">request</span><span class="p">,</span> <span class="n">requests_seen</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Check if request is in given requests seen list&quot;&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">seen</span> <span class="ow">in</span> <span class="n">requests_seen</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_requests_equal</span><span class="p">(</span><span class="n">request</span><span class="p">,</span> <span class="n">seen</span><span class="p">):</span>
+                <span class="k">return</span> <span class="kc">True</span>
+        <span class="c1"># request not seen</span>
+        <span class="k">return</span> <span class="kc">False</span>
+
+    <span class="k">def</span> <span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">requests</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Filter seen requests&quot;&quot;&quot;</span>
+        <span class="c1"># per-call duplicates filter</span>
+        <span class="n">requests_seen</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">req</span> <span class="ow">in</span> <span class="n">requests</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_request_in</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">requests_seen</span><span class="p">):</span>
+                <span class="k">yield</span> <span class="n">req</span>
+                <span class="c1"># registry seen request</span>
+                <span class="n">requests_seen</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">req</span><span class="p">)</span>
+
+
+<span class="k">class</span> <span class="nc">FilterDomain</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Filter request&#39;s domain&quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">allow</span><span class="o">=</span><span class="p">(),</span> <span class="n">deny</span><span class="o">=</span><span class="p">()):</span>
+         <span class="sd">&quot;&quot;&quot;Initialize allow/deny attributes&quot;&quot;&quot;</span>
+         <span class="bp">self</span><span class="o">.</span><span class="n">allow</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">arg_to_iter</span><span class="p">(</span><span class="n">allow</span><span class="p">))</span>
+         <span class="bp">self</span><span class="o">.</span><span class="n">deny</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">arg_to_iter</span><span class="p">(</span><span class="n">deny</span><span class="p">))</span>
+
+    <span class="k">def</span> <span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">requests</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Filter domains&quot;&quot;&quot;</span>
+        <span class="n">processed</span> <span class="o">=</span> <span class="p">(</span><span class="n">req</span> <span class="k">for</span> <span class="n">req</span> <span class="ow">in</span> <span class="n">requests</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">allow</span><span class="p">:</span>
+            <span class="n">processed</span> <span class="o">=</span> <span class="p">(</span><span class="n">req</span> <span class="k">for</span> <span class="n">req</span> <span class="ow">in</span> <span class="n">requests</span>
+                            <span class="k">if</span> <span class="n">url_is_from_any_domain</span><span class="p">(</span><span class="n">req</span><span class="o">.</span><span class="n">url</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">allow</span><span class="p">))</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">deny</span><span class="p">:</span>
+            <span class="n">processed</span> <span class="o">=</span> <span class="p">(</span><span class="n">req</span> <span class="k">for</span> <span class="n">req</span> <span class="ow">in</span> <span class="n">requests</span>
+                            <span class="k">if</span> <span class="ow">not</span> <span class="n">url_is_from_any_domain</span><span class="p">(</span><span class="n">req</span><span class="o">.</span><span class="n">url</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">deny</span><span class="p">))</span>
+
+        <span class="k">return</span> <span class="n">processed</span>
+
+
+<span class="k">class</span> <span class="nc">FilterUrl</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Filter request&#39;s url&quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">allow</span><span class="o">=</span><span class="p">(),</span> <span class="n">deny</span><span class="o">=</span><span class="p">()):</span>
+        <span class="sd">&quot;&quot;&quot;Initialize allow/deny attributes&quot;&quot;&quot;</span>
+        <span class="n">_re_type</span> <span class="o">=</span> <span class="nb">type</span><span class="p">(</span><span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">))</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">allow_res</span> <span class="o">=</span> <span class="p">[</span><span class="n">x</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">_re_type</span><span class="p">)</span> <span class="k">else</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+                          <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">arg_to_iter</span><span class="p">(</span><span class="n">allow</span><span class="p">)]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">deny_res</span> <span class="o">=</span> <span class="p">[</span><span class="n">x</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">_re_type</span><span class="p">)</span> <span class="k">else</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+                         <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">arg_to_iter</span><span class="p">(</span><span class="n">deny</span><span class="p">)]</span>
+
+    <span class="k">def</span> <span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">requests</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Filter request&#39;s url based on allow/deny rules&quot;&quot;&quot;</span>
+        <span class="c1">#TODO: filter valid urls here?</span>
+        <span class="n">processed</span> <span class="o">=</span> <span class="p">(</span><span class="n">req</span> <span class="k">for</span> <span class="n">req</span> <span class="ow">in</span> <span class="n">requests</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">allow_res</span><span class="p">:</span>
+            <span class="n">processed</span> <span class="o">=</span> <span class="p">(</span><span class="n">req</span> <span class="k">for</span> <span class="n">req</span> <span class="ow">in</span> <span class="n">requests</span>
+                            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_matches</span><span class="p">(</span><span class="n">req</span><span class="o">.</span><span class="n">url</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">allow_res</span><span class="p">))</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">deny_res</span><span class="p">:</span>
+            <span class="n">processed</span> <span class="o">=</span> <span class="p">(</span><span class="n">req</span> <span class="k">for</span> <span class="n">req</span> <span class="ow">in</span> <span class="n">requests</span>
+                            <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_matches</span><span class="p">(</span><span class="n">req</span><span class="o">.</span><span class="n">url</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">deny_res</span><span class="p">))</span>
+
+        <span class="k">return</span> <span class="n">processed</span>
+
+    <span class="k">def</span> <span class="nf">_matches</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">url</span><span class="p">,</span> <span class="n">regexs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Returns True if url matches any regex in given list&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="nb">any</span><span class="p">(</span><span class="n">r</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="n">url</span><span class="p">)</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">regexs</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="rule-object">
+<h3>Rule Object<a class="headerlink" href="#rule-object" title="Permalink to this headline">¶</a></h3>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="ch">#!python</span>
+<span class="c1">#</span>
+<span class="c1"># Dispatch Rules classes</span>
+<span class="c1"># Manage Rules (Matchers + Callbacks)</span>
+<span class="c1">#</span>
+<span class="k">class</span> <span class="nc">Rule</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Crawler Rule&quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">matcher</span><span class="p">,</span> <span class="n">callback</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">cb_args</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                 <span class="n">cb_kwargs</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">follow</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Store attributes&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">matcher</span> <span class="o">=</span> <span class="n">matcher</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">callback</span> <span class="o">=</span> <span class="n">callback</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cb_args</span> <span class="o">=</span> <span class="n">cb_args</span> <span class="k">if</span> <span class="n">cb_args</span> <span class="k">else</span> <span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cb_kwargs</span> <span class="o">=</span> <span class="n">cb_kwargs</span> <span class="k">if</span> <span class="n">cb_kwargs</span> <span class="k">else</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">follow</span> <span class="o">=</span> <span class="n">follow</span>
+
+<span class="c1">#</span>
+<span class="c1"># Rules Manager takes list of Rule objects and normalize matcher and callback</span>
+<span class="c1"># into CompiledRule</span>
+<span class="c1">#</span>
+<span class="k">class</span> <span class="nc">CompiledRule</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Compiled version of Rule&quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">matcher</span><span class="p">,</span> <span class="n">callback</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">follow</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Initialize attributes checking type&quot;&quot;&quot;</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">matcher</span><span class="p">,</span> <span class="n">BaseMatcher</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="n">callback</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">callable</span><span class="p">(</span><span class="n">callback</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">follow</span><span class="p">,</span> <span class="nb">bool</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">matcher</span> <span class="o">=</span> <span class="n">matcher</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">callback</span> <span class="o">=</span> <span class="n">callback</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">follow</span> <span class="o">=</span> <span class="n">follow</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="id1">
+<h3>Rules Manager<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h3>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="ch">#!python</span>
+<span class="c1">#</span>
+<span class="c1"># Handles rules matcher/callbacks</span>
+<span class="c1"># Resolve rule for given response</span>
+<span class="c1">#</span>
+<span class="k">class</span> <span class="nc">RulesManager</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Rules Manager&quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">rules</span><span class="p">,</span> <span class="n">spider</span><span class="p">,</span> <span class="n">default_matcher</span><span class="o">=</span><span class="n">UrlRegexMatcher</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Initialize rules using spider and default matcher&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_rules</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">()</span>
+
+        <span class="c1"># compile absolute/relative-to-spider callbacks&quot;&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">rule</span> <span class="ow">in</span> <span class="n">rules</span><span class="p">:</span>
+            <span class="c1"># prepare matcher</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">rule</span><span class="o">.</span><span class="n">matcher</span><span class="p">,</span> <span class="n">BaseMatcher</span><span class="p">):</span>
+                <span class="n">matcher</span> <span class="o">=</span> <span class="n">rule</span><span class="o">.</span><span class="n">matcher</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># matcher not BaseMatcher, check for string</span>
+                <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">rule</span><span class="o">.</span><span class="n">matcher</span><span class="p">,</span> <span class="n">basestring</span><span class="p">):</span>
+                    <span class="c1"># instance default matcher</span>
+                    <span class="n">matcher</span> <span class="o">=</span> <span class="n">default_matcher</span><span class="p">(</span><span class="n">rule</span><span class="o">.</span><span class="n">matcher</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Not valid matcher given </span><span class="si">%r</span><span class="s1"> in </span><span class="si">%r</span><span class="s1">&#39;</span> \
+                                    <span class="o">%</span> <span class="p">(</span><span class="n">rule</span><span class="o">.</span><span class="n">matcher</span><span class="p">,</span> <span class="n">rule</span><span class="p">))</span>
+
+            <span class="c1"># prepare callback</span>
+            <span class="k">if</span> <span class="n">callable</span><span class="p">(</span><span class="n">rule</span><span class="o">.</span><span class="n">callback</span><span class="p">):</span>
+                <span class="n">callback</span> <span class="o">=</span> <span class="n">rule</span><span class="o">.</span><span class="n">callback</span>
+            <span class="k">elif</span> <span class="ow">not</span> <span class="n">rule</span><span class="o">.</span><span class="n">callback</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="c1"># callback from spider</span>
+                <span class="n">callback</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">spider</span><span class="p">,</span> <span class="n">rule</span><span class="o">.</span><span class="n">callback</span><span class="p">)</span>
+
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">callable</span><span class="p">(</span><span class="n">callback</span><span class="p">):</span>
+                    <span class="k">raise</span> <span class="ne">AttributeError</span><span class="p">(</span><span class="s1">&#39;Invalid callback </span><span class="si">%r</span><span class="s1"> can not be resolved&#39;</span> \
+                                            <span class="o">%</span> <span class="n">callback</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">callback</span> <span class="o">=</span> <span class="kc">None</span>
+
+            <span class="k">if</span> <span class="n">rule</span><span class="o">.</span><span class="n">cb_args</span> <span class="ow">or</span> <span class="n">rule</span><span class="o">.</span><span class="n">cb_kwargs</span><span class="p">:</span>
+                <span class="c1"># build partial callback</span>
+                <span class="n">callback</span> <span class="o">=</span> <span class="n">partial</span><span class="p">(</span><span class="n">callback</span><span class="p">,</span> <span class="o">*</span><span class="n">rule</span><span class="o">.</span><span class="n">cb_args</span><span class="p">,</span> <span class="o">**</span><span class="n">rule</span><span class="o">.</span><span class="n">cb_kwargs</span><span class="p">)</span>
+
+            <span class="c1"># append compiled rule to rules list</span>
+            <span class="n">crule</span> <span class="o">=</span> <span class="n">CompiledRule</span><span class="p">(</span><span class="n">matcher</span><span class="p">,</span> <span class="n">callback</span><span class="p">,</span> <span class="n">follow</span><span class="o">=</span><span class="n">rule</span><span class="o">.</span><span class="n">follow</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_rules</span> <span class="o">+=</span> <span class="p">(</span><span class="n">crule</span><span class="p">,</span> <span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">get_rule</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">response</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Returns first rule that matches response&quot;&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">rule</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_rules</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">rule</span><span class="o">.</span><span class="n">matcher</span><span class="o">.</span><span class="n">matches_response</span><span class="p">(</span><span class="n">response</span><span class="p">):</span>
+                <span class="k">return</span> <span class="n">rule</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="id2">
+<h3>Request Generator<a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h3>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="ch">#!python</span>
+<span class="c1">#</span>
+<span class="c1"># Request Generator</span>
+<span class="c1"># Takes response and generate requests using extractors and processors</span>
+<span class="c1">#</span>
+<span class="k">class</span> <span class="nc">RequestGenerator</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">req_extractors</span><span class="p">,</span> <span class="n">req_processors</span><span class="p">,</span> <span class="n">callback</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_request_extractors</span> <span class="o">=</span> <span class="n">req_extractors</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_request_processors</span> <span class="o">=</span> <span class="n">req_processors</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">callback</span> <span class="o">=</span> <span class="n">callback</span>
+
+    <span class="k">def</span> <span class="nf">generate_requests</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">response</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Extract and process new requets from response</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">requests</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">ext</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_request_extractors</span><span class="p">:</span>
+            <span class="n">requets</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">ext</span><span class="o">.</span><span class="n">extract_requests</span><span class="p">(</span><span class="n">response</span><span class="p">))</span>
+
+        <span class="k">for</span> <span class="n">proc</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_request_processors</span><span class="p">:</span>
+            <span class="n">requests</span> <span class="o">=</span> <span class="n">proc</span><span class="p">(</span><span class="n">requests</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">request</span> <span class="ow">in</span> <span class="n">requests</span><span class="p">:</span>
+            <span class="k">yield</span> <span class="n">request</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="n">callback</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">callback</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="crawlspider">
+<h3><code class="docutils literal notranslate"><span class="pre">CrawlSpider</span></code><a class="headerlink" href="#crawlspider" title="Permalink to this headline">¶</a></h3>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="ch">#!python</span>
+<span class="c1">#</span>
+<span class="c1"># Spider</span>
+<span class="c1">#</span>
+<span class="k">class</span> <span class="nc">CrawlSpider</span><span class="p">(</span><span class="n">InitSpider</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;CrawlSpider v2&quot;&quot;&quot;</span>
+
+    <span class="n">request_extractors</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">request_processors</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">rules</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Initialize dispatcher&quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">CrawlSpider</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+
+        <span class="c1"># wrap rules</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_rulesman</span> <span class="o">=</span> <span class="n">RulesManager</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">rules</span><span class="p">,</span> <span class="n">spider</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
+        <span class="c1"># generates new requests with given callback</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_reqgen</span> <span class="o">=</span> <span class="n">RequestGenerator</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">request_extractors</span><span class="p">,</span>
+                                        <span class="bp">self</span><span class="o">.</span><span class="n">request_processors</span><span class="p">,</span>
+                                        <span class="bp">self</span><span class="o">.</span><span class="n">parse</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">parse</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">response</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Dispatch callback and generate requests&quot;&quot;&quot;</span>
+        <span class="c1"># get rule for response</span>
+        <span class="n">rule</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_rulesman</span><span class="o">.</span><span class="n">get_rule</span><span class="p">(</span><span class="n">response</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">rule</span><span class="p">:</span>
+            <span class="c1"># dispatch callback if set</span>
+            <span class="k">if</span> <span class="n">rule</span><span class="o">.</span><span class="n">callback</span><span class="p">:</span>
+                <span class="n">output</span> <span class="o">=</span> <span class="n">iterate_spider_output</span><span class="p">(</span><span class="n">rule</span><span class="o">.</span><span class="n">callback</span><span class="p">(</span><span class="n">response</span><span class="p">))</span>
+                <span class="k">for</span> <span class="n">req_or_item</span> <span class="ow">in</span> <span class="n">output</span><span class="p">:</span>
+                    <span class="k">yield</span> <span class="n">req_or_item</span>
+
+            <span class="k">if</span> <span class="n">rule</span><span class="o">.</span><span class="n">follow</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">req</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_reqgen</span><span class="o">.</span><span class="n">generate_requests</span><span class="p">(</span><span class="n">response</span><span class="p">):</span>
+                    <span class="k">yield</span> <span class="n">req</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">aaa</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2020, lancer.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.4.0</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="../_sources/sep/sep-014.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

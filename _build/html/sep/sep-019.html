@@ -1,0 +1,403 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>SEP-019: Per-spider settings and Crawl Process Cleanup &#8212; aaa 1 documentation</title>
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script src="../_static/jquery.js"></script>
+    <script src="../_static/underscore.js"></script>
+    <script src="../_static/doctools.js"></script>
+    <script src="../_static/language_data.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <table class="docutils align-default">
+<colgroup>
+<col style="width: 14%" />
+<col style="width: 86%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p>SEP</p></td>
+<td><p>19</p></td>
+</tr>
+<tr class="row-even"><td><p>Title</p></td>
+<td><p>Per-spider settings</p></td>
+</tr>
+<tr class="row-odd"><td><p>Author</p></td>
+<td><p>Pablo Hoffman, Nicolás Ramirez, Julia Medina</p></td>
+</tr>
+<tr class="row-even"><td><p>Created</p></td>
+<td><p>2013-03-07</p></td>
+</tr>
+<tr class="row-odd"><td><p>Status</p></td>
+<td><p>Final (implemented with minor variations)</p></td>
+</tr>
+</tbody>
+</table>
+<div class="section" id="sep-019-per-spider-settings-and-crawl-process-cleanup">
+<h1>SEP-019: Per-spider settings and Crawl Process Cleanup<a class="headerlink" href="#sep-019-per-spider-settings-and-crawl-process-cleanup" title="Permalink to this headline">¶</a></h1>
+<p>This is a proposal to add support for overriding settings per-spiders in a
+consistent way, while taking the chance to refactor the settings population
+and whole crawl workflow.</p>
+<p>In short, you will be able to overwrite settings (on a per-spider basis) by
+implementing a class method in your spider:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">MySpider</span><span class="p">(</span><span class="n">Spider</span><span class="p">):</span>
+
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">custom_settings</span><span class="p">(</span><span class="bp">cls</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s2">&quot;DOWNLOAD_DELAY&quot;</span><span class="p">:</span> <span class="mf">5.0</span><span class="p">,</span>
+            <span class="s2">&quot;RETRY_ENABLED&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="p">}</span>
+</pre></div>
+</div>
+<div class="section" id="proposed-changes">
+<h2>Proposed changes<a class="headerlink" href="#proposed-changes" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li><p>new <code class="docutils literal notranslate"><span class="pre">custom_settings</span></code> class method will be added to spiders, to give them
+a chance to override settings <em>before</em> they’re used to instantiate the crawler</p></li>
+<li><p>spider managers will maintain loading spider classes functionality (with a
+new <code class="docutils literal notranslate"><span class="pre">load</span></code> method that will return a spider class given its name), but
+spider initialization will be delegated to crawlers (with a new
+<code class="docutils literal notranslate"><span class="pre">from_crawler</span></code> class method in spiders, that will allow them access to
+crawlers directly)</p></li>
+<li><p>spider manager will be striped out of Crawler class, as it will no longer
+need it</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">SPIDER_MODULES</span></code> and <code class="docutils literal notranslate"><span class="pre">SPIDER_MANAGER_CLASS</span></code> settings will be removed and
+replaced by entries on <code class="docutils literal notranslate"><span class="pre">scrapy.cfg</span></code>. Thus spider managers won’t need
+project settings to configure themselves</p></li>
+<li><p>CrawlerProcess will be remove, since crawlers will be created independently
+with a required spider class and optional <code class="docutils literal notranslate"><span class="pre">SettingsReader</span></code> instance</p></li>
+<li><p>Settings class will be split into two classes: <code class="docutils literal notranslate"><span class="pre">SettingsLoader</span></code> and
+<code class="docutils literal notranslate"><span class="pre">SettingsReader</span></code>, and a new concept of “setting priority” will be added</p></li>
+</ul>
+</div>
+<div class="section" id="settings">
+<h2>Settings<a class="headerlink" href="#settings" title="Permalink to this headline">¶</a></h2>
+<p>Settings class will be split into two classes <code class="docutils literal notranslate"><span class="pre">SettingsLoader</span></code> and
+<code class="docutils literal notranslate"><span class="pre">SettingsReader</span></code>. First one will be used to settle all different levels of
+settings across the project, and the later will be a frozen version of the
+already loaded settings and will be the preferred way to access them. This
+will avoid the current possible misconception that you can change settings
+after they have been populated. There’ll be a new concept of settings
+priorities, and <code class="docutils literal notranslate"><span class="pre">settings.overrides</span></code> will be deprecated in favor of
+explicitly loaded settings with priorities, as it’ll make the settings
+overriding not order-dependent.</p>
+<p>Because of this, <code class="docutils literal notranslate"><span class="pre">CrawlerSettings</span></code> (with its overrides, settings_module and
+defaults) will be remove, but its interface could be maintained for backward
+compatibility in <code class="docutils literal notranslate"><span class="pre">SettingsReader</span></code> (since on <code class="docutils literal notranslate"><span class="pre">SettingsLoader</span></code>, overrides
+dictionary and settings with priorities don’t get along with a consistent
+implementation). Maintaining this attributes and their functionality is not
+advisable since it breaks the read-only access nature of the class.</p>
+<p>With the new per-spider settings, there’s a need of a helper function that
+will take a spider and return a <code class="docutils literal notranslate"><span class="pre">SettingsReader</span></code> instance populated with
+defaults’, project’s and the given spider’s settings.  Motive behind this is
+that <code class="docutils literal notranslate"><span class="pre">get_project_settings</span></code> can’t continue being used for getting settings
+instance for crawler usage when using the API directly, as the project is not
+the only source of settings anymore. <code class="docutils literal notranslate"><span class="pre">get_projects_settings</span></code> will become an
+internal function because of that.</p>
+<div class="section" id="settingsloader">
+<h3>SettingsLoader<a class="headerlink" href="#settingsloader" title="Permalink to this headline">¶</a></h3>
+<p><code class="docutils literal notranslate"><span class="pre">SettingsLoader</span></code> is going to populate settings at startup, then it’ll be
+converted to a <code class="docutils literal notranslate"><span class="pre">SettingsReader</span></code> instance and discarded afterwards.</p>
+<p>It is supposed to be write-only, but many previously loaded settings are
+needed to be accessed before freezing them. For example, the
+<code class="docutils literal notranslate"><span class="pre">COMMANDS_MODULE</span></code> setting allows loading more command default settings.
+Another example is that we need to read <code class="docutils literal notranslate"><span class="pre">LOG_*</span></code> settings early because we
+must be able to log errors on the load settings process. <code class="docutils literal notranslate"><span class="pre">ScrapyCommands</span></code>
+may be configured based upon current settings, as users can plug custom
+commands. These are some of the reasons that suggest that we need a read-write
+access for this class.</p>
+<ul class="simple">
+<li><p>Will have a method <code class="docutils literal notranslate"><span class="pre">set(name,</span> <span class="pre">value,</span> <span class="pre">priority)</span></code> to register a setting with
+a given priority. A <code class="docutils literal notranslate"><span class="pre">setdict(dict,</span> <span class="pre">priority)</span></code> method may come handy for
+loading project’s and per-spider settings.</p></li>
+<li><p>Will have current Settings getter functions (<code class="docutils literal notranslate"><span class="pre">get</span></code>, <code class="docutils literal notranslate"><span class="pre">getint</span></code>,
+<code class="docutils literal notranslate"><span class="pre">getfloat</span></code>, <code class="docutils literal notranslate"><span class="pre">getdict</span></code>, etc.) (See above for reasons behind this).</p></li>
+<li><p>Will have a <code class="docutils literal notranslate"><span class="pre">freeze</span></code> method that returns an instance of
+<code class="docutils literal notranslate"><span class="pre">SettingsReader</span></code>, with a copy of the current state of settings (already
+prioritized).</p></li>
+</ul>
+</div>
+<div class="section" id="settingsreader">
+<h3>SettingsReader<a class="headerlink" href="#settingsreader" title="Permalink to this headline">¶</a></h3>
+<p>It’s intended to be the one used by core, extensions, and all components that
+use settings without modifying them. Because there are logical objects that
+change settings, such as <code class="docutils literal notranslate"><span class="pre">ScrapyCommands</span></code>, use cases of each settings class
+need to be comprehensively explained.</p>
+<p>New crawlers will be created with an instance of this class (The one returned
+by the <code class="docutils literal notranslate"><span class="pre">freeze</span></code> method on the already populated <code class="docutils literal notranslate"><span class="pre">SettingsReader</span></code>), because
+they are not expected to alter the settings.</p>
+<p>It’ll be read-only, keeping the same getter methods of current <code class="docutils literal notranslate"><span class="pre">Settings</span></code>
+(<code class="docutils literal notranslate"><span class="pre">get</span></code>, <code class="docutils literal notranslate"><span class="pre">getint</span></code>, <code class="docutils literal notranslate"><span class="pre">getfloat</span></code>, <code class="docutils literal notranslate"><span class="pre">getdict</span></code>, etc.). There could be a
+<code class="docutils literal notranslate"><span class="pre">set</span></code> method that will throw a descriptive explanatory error for debugging
+compatibility, avoiding its inadvertently usage.</p>
+</div>
+<div class="section" id="setting-priorities">
+<h3>Setting priorities<a class="headerlink" href="#setting-priorities" title="Permalink to this headline">¶</a></h3>
+<p>There will be 5 setting priorities used by default:</p>
+<ul class="simple">
+<li><p>0: global defaults (those in <code class="docutils literal notranslate"><span class="pre">scrapy.settings.default_settings</span></code>)</p></li>
+<li><p>10: per-command defaults (for example, shell runs with <code class="docutils literal notranslate"><span class="pre">KEEP_ALIVE=True</span></code>)</p></li>
+<li><p>20: project settings (those in <code class="docutils literal notranslate"><span class="pre">settings.py</span></code>)</p></li>
+<li><p>30: per-spider settings (those returned by <code class="docutils literal notranslate"><span class="pre">Spider.custom_settings</span></code> class method)</p></li>
+<li><p>40: command line arguments (those passed in the command line)</p></li>
+</ul>
+<p>There are a couple of issues here:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">SCRAPY_PICKLED_SETTINGS_TO_OVERRIDE</span></code> and <code class="docutils literal notranslate"><span class="pre">SCRAPY_{settings}</span></code> need-to-be
+deprecated environment variables: Can be kept, with a new or existing
+priority.</p></li>
+<li><p>We could have different priorities for settings given with the <code class="docutils literal notranslate"><span class="pre">-s</span></code>
+argument and other named arguments in the command line (For example, <code class="docutils literal notranslate"><span class="pre">-s</span>
+<span class="pre">LOG_ENABLE=False</span> <span class="pre">--loglevel=ERROR</span></code> will set <code class="docutils literal notranslate"><span class="pre">LOG_ENABLE</span></code> to True, because
+named options are overridden later in the current implementation), but
+because the processing of command line options is done in one place we could
+leave them with the same priority and depend on the order of the set calls
+just for this case.</p></li>
+</ul>
+</div>
+<div class="section" id="deprecated-code">
+<h3>Deprecated code<a class="headerlink" href="#deprecated-code" title="Permalink to this headline">¶</a></h3>
+<p><code class="docutils literal notranslate"><span class="pre">scrapy.conf.settings</span></code> singleton is a deprecated implementation concerning
+settings load. Could be maintained as it is, but the singleton should
+implement new <code class="docutils literal notranslate"><span class="pre">SettingsReader</span></code> interface in order to work.</p>
+</div>
+</div>
+<div class="section" id="spider-manager">
+<h2>Spider manager<a class="headerlink" href="#spider-manager" title="Permalink to this headline">¶</a></h2>
+<p>Currently, the spider manager is part of the crawler which creates a cyclic
+loop between settings and spiders and it shouldn’t belong there. The spiders
+should be loaded outside and passed to the crawler object, which will require a
+spider class to be instantiated.</p>
+<p>This new spider manager will not have access to the settings (they won’t be
+loaded yet) so it will use scrapy.cfg to configure itself.</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">scrapy.cfg</span></code> would look like this:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[</span><span class="n">settings</span><span class="p">]</span>
+<span class="n">default</span> <span class="o">=</span> <span class="n">myproject</span><span class="o">.</span><span class="n">settings</span>
+
+<span class="p">[</span><span class="n">spiders</span><span class="p">]</span>
+<span class="n">manager</span> <span class="o">=</span> <span class="n">scrapy</span><span class="o">.</span><span class="n">spidermanager</span><span class="o">.</span><span class="n">SpiderManager</span>
+<span class="n">modules</span> <span class="o">=</span> <span class="n">myproject</span><span class="o">.</span><span class="n">spiders</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">manager</span></code> replaces <code class="docutils literal notranslate"><span class="pre">SPIDER_MANAGER_CLASS</span></code> setting and will, if omitted,
+default to <code class="docutils literal notranslate"><span class="pre">scrapy.spidermanager.SpiderManager</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">modules</span></code> replaces <code class="docutils literal notranslate"><span class="pre">SPIDER_MODULES</span></code> setting and will be required</p></li>
+</ul>
+<p>These ideas translate to the following changes on the <code class="docutils literal notranslate"><span class="pre">SpiderManager</span></code> class:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">__init__(spider_modules)</span></code> -&gt; <code class="docutils literal notranslate"><span class="pre">__init__()</span></code>. <code class="docutils literal notranslate"><span class="pre">spider_modules</span></code> will be
+looked in <code class="docutils literal notranslate"><span class="pre">scrapy.cfg</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">create('spider_name',</span> <span class="pre">**spider_kargs)</span></code> -&gt; <code class="docutils literal notranslate"><span class="pre">load('spider_name')</span></code>. This
+will return a spider class, not an instance. It’s basically a <code class="docutils literal notranslate"><span class="pre">__get__</span></code>
+to <code class="docutils literal notranslate"><span class="pre">self._spiders</span></code>.</p></li>
+<li><p>All remaining functions should be deprecated or remove accordingly, since a
+crawler reference is no longer needed.</p></li>
+<li><p>New helper <code class="docutils literal notranslate"><span class="pre">get_spider_manager_class_from_scrapycfg</span></code> in
+<code class="docutils literal notranslate"><span class="pre">scrapy/utils/spidermanager.py</span></code>.</p></li>
+</ul>
+</div>
+<div class="section" id="spiders">
+<h2>Spiders<a class="headerlink" href="#spiders" title="Permalink to this headline">¶</a></h2>
+<p>A new class method <code class="docutils literal notranslate"><span class="pre">custom_settings</span></code> is proposed, that could be use to
+override project and default settings before they’re used to instantiate the
+crawler:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">MySpider</span><span class="p">(</span><span class="n">Spider</span><span class="p">):</span>
+
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">custom_settings</span><span class="p">(</span><span class="bp">cls</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s2">&quot;DOWNLOAD_DELAY&quot;</span><span class="p">:</span> <span class="mf">5.0</span><span class="p">,</span>
+            <span class="s2">&quot;RETRY_ENABLED&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="p">}</span>
+</pre></div>
+</div>
+<p>This will only involve a <code class="docutils literal notranslate"><span class="pre">set</span></code> call with the corresponding priority when
+populating <code class="docutils literal notranslate"><span class="pre">SettingsLoader</span></code>.</p>
+<p>Contributing to API changes, new <code class="docutils literal notranslate"><span class="pre">from_crawler</span></code> class method will be added
+to spiders to give them a chance to access settings, stats, or the crawler
+core components themselves. This should be the new way to create a spider from
+now on (instead of normally instantiate it as is currently).</p>
+</div>
+<div class="section" id="scrapy-commands">
+<h2>Scrapy commands<a class="headerlink" href="#scrapy-commands" title="Permalink to this headline">¶</a></h2>
+<p>As already stated, <code class="docutils literal notranslate"><span class="pre">ScrapyCommands</span></code> modify the settings, so they need a
+<code class="docutils literal notranslate"><span class="pre">SettingsLoader</span></code> instance reference in order to do that.</p>
+<p>Present <code class="docutils literal notranslate"><span class="pre">process_option</span></code> implementations on Base and other commands read and
+override settings. These overrides should be changed to <code class="docutils literal notranslate"><span class="pre">set</span></code> calls with
+the allocated priority.</p>
+<p>Each command with a custom <code class="docutils literal notranslate"><span class="pre">run</span></code> method should be modified to reflect the new
+refactored API (Particularly <code class="docutils literal notranslate"><span class="pre">crawl</span></code> command).</p>
+</div>
+<div class="section" id="crawlerprocess">
+<h2>CrawlerProcess<a class="headerlink" href="#crawlerprocess" title="Permalink to this headline">¶</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">CrawlerProcess</span></code> should be remove because Scrapy crawl command no longer
+supports running multiple spiders. The preferred way for doing this is using
+the API manually, instantiating a separate Crawler for each spider, so
+<code class="docutils literal notranslate"><span class="pre">CrawlerProcess</span></code> has loosen its utility.</p>
+<p>This change is not directly related to the project (it’s not focus on settings
+but it fits in the API clean up task), but it’s a great opportunity to
+consider since we’re changing the crawling startup flow.</p>
+<p>This class will be deleted and the attributes and methods will be merge with
+<code class="docutils literal notranslate"><span class="pre">Crawler</span></code>. For that effect, these are the specific merges and removals:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">self.crawlers</span></code> doesn’t make sense is this new set up, each reference will
+be replace with self.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">create_crawler</span></code> will be <code class="docutils literal notranslate"><span class="pre">__init__</span></code> of <code class="docutils literal notranslate"><span class="pre">Crawler</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">_start_crawler</span></code> will be merge with <code class="docutils literal notranslate"><span class="pre">Crawler.start</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">start</span></code> will be merge with <code class="docutils literal notranslate"><span class="pre">Crawler.crawl</span></code> but this will need from the
+later an extra boolean parameter <code class="docutils literal notranslate"><span class="pre">start_reactor</span></code> (default: True) to crawl
+with or without starting twisted reactor (This is required in
+<code class="docutils literal notranslate"><span class="pre">commands.shell</span></code> in order to start the reactor in another thread).</p></li>
+</ul>
+</div>
+<div class="section" id="startup-process">
+<h2>Startup process<a class="headerlink" href="#startup-process" title="Permalink to this headline">¶</a></h2>
+<p>This summarizes the current and new proposed mechanisms for starting up a
+Scrapy crawler. Imports and non representative functions are omitted for
+brevity.</p>
+<div class="section" id="current-old-startup-process">
+<h3>Current (old) startup process<a class="headerlink" href="#current-old-startup-process" title="Permalink to this headline">¶</a></h3>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># execute in cmdline</span>
+
+<span class="c1"># loads settings.py, returns CrawlerSettings(settings_module)</span>
+<span class="n">settings</span> <span class="o">=</span> <span class="n">get_project_settings</span><span class="p">()</span>
+<span class="n">settings</span><span class="o">.</span><span class="n">defaults</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">cmd</span><span class="o">.</span><span class="n">default_settings</span><span class="p">)</span>
+
+<span class="n">cmd</span><span class="o">.</span><span class="n">crawler_process</span> <span class="o">=</span> <span class="n">CrawlerProcess</span><span class="p">(</span><span class="n">settings</span><span class="p">)</span>
+<span class="n">cmd</span><span class="o">.</span><span class="n">run</span> <span class="c1"># (In a _run_print_help call)</span>
+
+    <span class="c1"># Command.run in commands/crawl.py</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">crawler_process</span><span class="o">.</span><span class="n">create_crawler</span><span class="p">()</span>
+    <span class="n">spider</span> <span class="o">=</span> <span class="n">crawler</span><span class="o">.</span><span class="n">spiders</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="n">spider_name</span><span class="p">,</span> <span class="o">**</span><span class="n">spider_kwargs</span><span class="p">)</span>
+<span class="n">crawler</span><span class="o">.</span><span class="n">crawl</span><span class="p">(</span><span class="n">spider</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">crawler_process</span><span class="o">.</span><span class="n">start</span><span class="p">()</span> <span class="c1"># starts crawling spider</span>
+
+        <span class="c1"># CrawlerProcess._start_crawler in crawler.py</span>
+
+        <span class="n">crawler</span><span class="o">.</span><span class="n">configure</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="proposed-new-startup-process">
+<h3>Proposed (new) startup process<a class="headerlink" href="#proposed-new-startup-process" title="Permalink to this headline">¶</a></h3>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># execute in cmdline</span>
+
+<span class="n">smcls</span> <span class="o">=</span> <span class="n">get_spider_manager_class_from_scrapycfg</span><span class="p">()</span>
+<span class="n">sm</span> <span class="o">=</span> <span class="n">smcls</span><span class="p">()</span> <span class="c1"># loads spiders from module defined in scrapy.cfg</span>
+<span class="n">spidercls</span> <span class="o">=</span> <span class="n">sm</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">spider_name</span><span class="p">)</span> <span class="c1"># returns spider class, not instance</span>
+
+<span class="n">settings</span> <span class="o">=</span> <span class="n">get_project_settings</span><span class="p">()</span> <span class="c1"># loads settings.py</span>
+<span class="n">settings</span><span class="o">.</span><span class="n">setdict</span><span class="p">(</span><span class="n">cmd</span><span class="o">.</span><span class="n">default_settings</span><span class="p">,</span> <span class="n">priority</span><span class="o">=</span><span class="mi">40</span><span class="p">)</span>
+
+<span class="n">settings</span><span class="o">.</span><span class="n">setdict</span><span class="p">(</span><span class="n">spidercls</span><span class="o">.</span><span class="n">custom_settings</span><span class="p">(),</span> <span class="n">priority</span><span class="o">=</span><span class="mi">30</span><span class="p">)</span>
+
+<span class="n">settings</span> <span class="o">=</span> <span class="n">settings</span><span class="o">.</span><span class="n">freeze</span><span class="p">()</span>
+<span class="n">cmd</span><span class="o">.</span><span class="n">crawler</span> <span class="o">=</span> <span class="n">Crawler</span><span class="p">(</span><span class="n">spidercls</span><span class="p">,</span> <span class="n">settings</span><span class="o">=</span><span class="n">settings</span><span class="p">)</span>
+
+    <span class="c1"># Crawler.__init__ in crawler.py</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">configure</span><span class="p">()</span>
+
+<span class="n">cmd</span><span class="o">.</span><span class="n">run</span> <span class="c1"># (In a _run_print_help call)</span>
+
+    <span class="c1"># Command.run in commands/crawl.py</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">crawler</span><span class="o">.</span><span class="n">crawl</span><span class="p">(</span><span class="o">**</span><span class="n">spider_kwargs</span><span class="p">)</span>
+
+        <span class="c1"># Crawler.crawl in crawler.py</span>
+
+        <span class="n">spider</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">spidercls</span><span class="o">.</span><span class="n">from_crawler</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">spider_kwargs</span><span class="p">)</span>
+    <span class="c1"># starts crawling spider</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">aaa</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2020, lancer.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.4.0</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="../_sources/sep/sep-019.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

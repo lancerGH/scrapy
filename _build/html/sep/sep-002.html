@@ -1,0 +1,216 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>SEP-002 - List fields API &#8212; aaa 1 documentation</title>
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script src="../_static/jquery.js"></script>
+    <script src="../_static/underscore.js"></script>
+    <script src="../_static/doctools.js"></script>
+    <script src="../_static/language_data.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <table class="docutils align-default">
+<colgroup>
+<col style="width: 21%" />
+<col style="width: 79%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p>SEP</p></td>
+<td><p>3</p></td>
+</tr>
+<tr class="row-even"><td><p>Title</p></td>
+<td><p>List fields API</p></td>
+</tr>
+<tr class="row-odd"><td><p>Author</p></td>
+<td><p>Pablo Hoffman</p></td>
+</tr>
+<tr class="row-even"><td><p>Created</p></td>
+<td><p>2009-07-21</p></td>
+</tr>
+<tr class="row-odd"><td><p>Status</p></td>
+<td><p>Obsolete by <span class="xref std std-ref">sep-008</span></p></td>
+</tr>
+</tbody>
+</table>
+<div class="section" id="sep-002-list-fields-api">
+<h1>SEP-002 - List fields API<a class="headerlink" href="#sep-002-list-fields-api" title="Permalink to this headline">¶</a></h1>
+<p>This page presents different usage scenarios for the new multi-valued field,
+called !ListField.</p>
+<div class="section" id="proposed-implementation">
+<h2>Proposed Implementation<a class="headerlink" href="#proposed-implementation" title="Permalink to this headline">¶</a></h2>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="ch">#!python</span>
+<span class="kn">from</span> <span class="nn">scrapy.item.fields</span> <span class="kn">import</span> <span class="n">BaseField</span>
+
+<span class="k">class</span> <span class="nc">ListField</span><span class="p">(</span><span class="n">BaseField</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">field</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_field</span> <span class="o">=</span> <span class="n">field</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">ListField</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">default</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">to_python</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="s1">&#39;__iter__&#39;</span><span class="p">):</span> <span class="c1"># str/unicode not allowed</span>
+            <span class="k">return</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_field</span><span class="o">.</span><span class="n">to_python</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">value</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;Expected iterable, got </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="nb">type</span><span class="p">(</span><span class="n">value</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">get_default</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># must return a new copy to avoid unexpected behaviors with mutable defaults</span>
+        <span class="k">return</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_default</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="usage-scenarios">
+<h2>Usage Scenarios<a class="headerlink" href="#usage-scenarios" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="defining-a-list-field">
+<h3>Defining a list field<a class="headerlink" href="#defining-a-list-field" title="Permalink to this headline">¶</a></h3>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="ch">#!python</span>
+<span class="kn">from</span> <span class="nn">scrapy.item.models</span> <span class="kn">import</span> <span class="n">Item</span>
+<span class="kn">from</span> <span class="nn">scrapy.item.fields</span> <span class="kn">import</span> <span class="n">ListField</span><span class="p">,</span> <span class="n">TextField</span><span class="p">,</span> <span class="n">DateField</span><span class="p">,</span> <span class="n">IntegerField</span>
+
+<span class="k">class</span> <span class="nc">Article</span><span class="p">(</span><span class="n">Item</span><span class="p">):</span>
+    <span class="n">categories</span> <span class="o">=</span> <span class="n">ListField</span><span class="p">(</span><span class="n">TextField</span><span class="p">)</span>
+    <span class="n">dates</span> <span class="o">=</span> <span class="n">ListField</span><span class="p">(</span><span class="n">DateField</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="p">[])</span>
+    <span class="n">numbers</span> <span class="o">=</span> <span class="n">ListField</span><span class="p">(</span><span class="n">IntegerField</span><span class="p">,</span> <span class="p">[])</span>
+</pre></div>
+</div>
+<p>Another case of products and variants which highlights the fact that it’s
+important to instantiate !ListField with field instances, not classes:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="ch">#!python</span>
+<span class="kn">from</span> <span class="nn">scrapy.item.models</span> <span class="kn">import</span> <span class="n">Item</span>
+<span class="kn">from</span> <span class="nn">scrapy.item.fields</span> <span class="kn">import</span> <span class="n">ListField</span><span class="p">,</span> <span class="n">TextField</span>
+
+<span class="k">class</span> <span class="nc">Variant</span><span class="p">(</span><span class="n">Item</span><span class="p">):</span>
+    <span class="n">name</span> <span class="o">=</span> <span class="n">TextField</span><span class="p">()</span>
+
+<span class="k">class</span> <span class="nc">Product</span><span class="p">(</span><span class="n">Variant</span><span class="p">):</span>
+    <span class="n">variants</span> <span class="o">=</span> <span class="n">ListField</span><span class="p">(</span><span class="n">ItemField</span><span class="p">(</span><span class="n">Variant</span><span class="p">))</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="assigning-a-list-field">
+<h3>Assigning a list field<a class="headerlink" href="#assigning-a-list-field" title="Permalink to this headline">¶</a></h3>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="ch">#!python</span>
+<span class="n">i</span> <span class="o">=</span> <span class="n">Article</span><span class="p">()</span>
+
+<span class="n">i</span><span class="p">[</span><span class="s1">&#39;categories&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+<span class="n">i</span><span class="p">[</span><span class="s1">&#39;categories&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;politics&#39;</span><span class="p">,</span> <span class="s1">&#39;sport&#39;</span><span class="p">]</span>
+<span class="n">i</span><span class="p">[</span><span class="s1">&#39;categories&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;test&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span> <span class="o">-&gt;</span> <span class="n">raises</span> <span class="ne">TypeError</span>
+<span class="n">i</span><span class="p">[</span><span class="s1">&#39;categories&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">asd</span> <span class="o">-&gt;</span> <span class="n">raises</span> <span class="ne">TypeError</span>
+
+<span class="n">i</span><span class="p">[</span><span class="s1">&#39;dates&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+<span class="n">i</span><span class="p">[</span><span class="s1">&#39;dates&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;2009-01-01&#39;</span><span class="p">]</span>  <span class="c1"># raises TypeError? (depends on TextField)</span>
+
+<span class="n">i</span><span class="p">[</span><span class="s1">&#39;numbers&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;1&#39;</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="s1">&#39;3&#39;</span><span class="p">]</span>
+<span class="n">i</span><span class="p">[</span><span class="s1">&#39;numbers&#39;</span><span class="p">]</span> <span class="c1"># returns [1, 2, 3]</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="default-values">
+<h3>Default values<a class="headerlink" href="#default-values" title="Permalink to this headline">¶</a></h3>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="ch">#!python</span>
+<span class="n">i</span> <span class="o">=</span> <span class="n">Article</span><span class="p">()</span>
+
+<span class="n">i</span><span class="p">[</span><span class="s1">&#39;categories&#39;</span><span class="p">]</span> <span class="c1"># raises KeyError</span>
+<span class="n">i</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;categories&#39;</span><span class="p">)</span> <span class="c1"># returns None</span>
+
+<span class="n">i</span><span class="p">[</span><span class="s1">&#39;numbers&#39;</span><span class="p">]</span> <span class="c1"># returns []</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="appending-values">
+<h3>Appending values<a class="headerlink" href="#appending-values" title="Permalink to this headline">¶</a></h3>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="ch">#!python</span>
+<span class="n">i</span> <span class="o">=</span> <span class="n">Article</span><span class="p">()</span>
+
+<span class="n">i</span><span class="p">[</span><span class="s1">&#39;categories&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;one&#39;</span><span class="p">,</span> <span class="s1">&#39;two&#39;</span><span class="p">]</span>
+<span class="n">i</span><span class="p">[</span><span class="s1">&#39;categories&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span> <span class="c1"># XXX: should this fail?</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">aaa</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2020, lancer.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.4.0</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="../_sources/sep/sep-002.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>
